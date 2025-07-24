@@ -1,6 +1,12 @@
 // Package config: service which deals with the game config
 package config
 
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
 type LevelConfig struct {
 	Level        int32 `json:"level"`
 	EnergyCost   int32 `json:"energyCost"`
@@ -21,4 +27,19 @@ var gameConfig = GameConfig{
 		{Level: 4, EnergyCost: 4, TotalRolls: 3, Target: 1, EnergyReward: 7},
 		{Level: 5, EnergyCost: 4, TotalRolls: 2, Target: 5, EnergyReward: 8},
 	},
+}
+
+// HandleConfigRequest responds with a game config
+func HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
+
+	// TODO: check valid session
+
+	fmt.Printf("config requested... \n ")
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewEncoder(w).Encode(gameConfig)
+	if err != nil {
+		http.Error(w, "could not encode game config", http.StatusInternalServerError)
+	}
 }
