@@ -79,4 +79,15 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	// TODO: check valid session
 
 	id := r.PathValue("id")
+
+	fmt.Printf("player data requested for id: %v \n ", id)
+
+	ps.playersMutex.Lock()
+	defer ps.playersMutex.Unlock()
+
+	player, ok := ps.players[id]
+	if !ok {
+		http.Error(w, "player not found", http.StatusBadRequest)
+		return
+	}
 }
