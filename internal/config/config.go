@@ -43,7 +43,11 @@ func NewConfigServer() *Server {
 }
 
 // HandleConfigRequest responds with a game config
-func HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
+func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
+
+	if cs == nil {
+		http.Error(w, "provided config server pointer is nil", http.StatusInternalServerError)
+	}
 
 	// TODO: check valid session
 
@@ -51,7 +55,7 @@ func HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err := json.NewEncoder(w).Encode(gameConfig)
+	err := json.NewEncoder(w).Encode(cs.gameConfig)
 	if err != nil {
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
