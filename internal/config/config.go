@@ -19,6 +19,10 @@ type GameConfig struct {
 	Levels []LevelConfig `json:"levels"`
 }
 
+type Server struct {
+	gameConfig *GameConfig
+}
+
 var gameConfig = &GameConfig{
 	[]LevelConfig{
 		{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
