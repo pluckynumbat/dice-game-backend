@@ -35,4 +35,17 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	}
 
 	// TODO: check valid session
+
+	newPlayer := &PlayerData{
+		PlayerID: "",
+		Level:    defaultLevel,
+		Energy:   maxEnergy,
+	}
+
+	err := json.NewDecoder(r.Body).Decode(newPlayer)
+	if err != nil {
+		http.Error(w, "could not decode player id", http.StatusInternalServerError)
+		return
+	}
+
 }
