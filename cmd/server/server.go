@@ -23,6 +23,7 @@ func main() {
 	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
 
 	mux.HandleFunc("POST /profile/new-player", profileServer.HandleNewPlayerRequest)
+	mux.HandleFunc("GET /profile/player-data/{id}", profileServer.HandlePlayerDataRequest)
 
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
