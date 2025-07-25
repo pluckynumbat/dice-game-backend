@@ -26,3 +26,13 @@ func NewProfileServer() *Server {
 		playersMutex: sync.Mutex{},
 	}
 }
+
+// HandleNewPlayerRequest creates a new player in the map
+func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ps == nil {
+		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+	}
+
+	// TODO: check valid session
+}
