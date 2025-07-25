@@ -68,3 +68,15 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
 }
+
+// HandlePlayerDataRequest responds with the player data
+func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ps == nil {
+		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+	}
+
+	// TODO: check valid session
+
+	id := r.PathValue("id")
+}
