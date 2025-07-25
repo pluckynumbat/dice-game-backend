@@ -56,4 +56,15 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "player exists already", http.StatusBadRequest)
 		return
 	}
+
+	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
+
+	ps.players[newPlayer.PlayerID] = *newPlayer
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err = json.NewEncoder(w).Encode(ps.players[newPlayer.PlayerID])
+	if err != nil {
+		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+	}
 }
