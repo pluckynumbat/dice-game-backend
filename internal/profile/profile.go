@@ -34,6 +34,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 
 	if ps == nil {
 		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		return
 	}
 
 	// TODO: check valid session
@@ -76,6 +77,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	if ps == nil {
 		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		return
 	}
 
 	// TODO: check valid session

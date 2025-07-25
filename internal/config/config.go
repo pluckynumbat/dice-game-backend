@@ -47,6 +47,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	if cs == nil {
 		http.Error(w, "provided config server pointer is nil", http.StatusInternalServerError)
+		return
 	}
 
 	// TODO: check valid session
