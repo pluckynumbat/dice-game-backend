@@ -11,10 +11,15 @@ const serverHost string = ""
 const serverPort string = "8080"
 
 func main() {
-	fmt.Println("started the server...")
+	fmt.Println("starting the server...")
+	
+	mux := http.NewServeMux()
 
-	http.HandleFunc("GET /config/game-config", config.HandleConfigRequest)
+	configServer := config.NewConfigServer()
+
+	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
+
 
 	addr := serverHost + ":" + serverPort
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
