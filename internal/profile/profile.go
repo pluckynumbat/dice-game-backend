@@ -48,4 +48,12 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	ps.playersMutex.Lock()
+	defer ps.playersMutex.Unlock()
+
+	_, exists := ps.players[newPlayer.PlayerID]
+	if exists {
+		http.Error(w, "player exists already", http.StatusBadRequest)
+		return
+	}
 }
