@@ -90,4 +90,11 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		http.Error(w, "player not found", http.StatusBadRequest)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewEncoder(w).Encode(player)
+	if err != nil {
+		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+	}
 }
