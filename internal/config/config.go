@@ -3,6 +3,7 @@ package config
 
 import (
 	"encoding/json"
+	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 )
@@ -53,12 +54,18 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: check valid session
+	err := cs.RequestValidator.ValidateRequest(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	fmt.Printf("config requested... \n ")
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err := json.NewEncoder(w).Encode(cs.gameConfig)
+	err = json.NewEncoder(w).Encode(cs.gameConfig)
 	if err != nil {
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
