@@ -3,6 +3,10 @@ package auth
 
 import "sync"
 
+type LoginResponse struct {
+	PlayerID string `json:"playerID"`
+}
+
 type SessionData struct {
 	PlayerID       string
 	SessionID      string
