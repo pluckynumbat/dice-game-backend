@@ -22,7 +22,7 @@ type GameConfig struct {
 
 type Server struct {
 	gameConfig       *GameConfig
-	RequestValidator validation.RequestValidator
+	requestValidator validation.RequestValidator
 }
 
 func NewConfigServer(rv validation.RequestValidator) *Server {
@@ -41,7 +41,7 @@ func NewConfigServer(rv validation.RequestValidator) *Server {
 				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
 			},
 		},
-		RequestValidator: rv,
+		requestValidator: rv,
 	}
 }
 
@@ -53,7 +53,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := cs.RequestValidator.ValidateRequest(r)
+	err := cs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
