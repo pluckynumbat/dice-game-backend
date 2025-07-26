@@ -3,11 +3,17 @@ package auth
 
 import "sync"
 
+type SessionData struct {
+	PlayerID       string
+	SessionID      string
+	LastActionTime int64
+}
+
 type Server struct {
 	credentials map[string]string
 	credMutex   sync.Mutex
 
-	sessions map[string]string
+	sessions  map[string]*SessionData
 	sessMutex sync.Mutex
 }
 
@@ -16,7 +22,7 @@ func NewAuthServer() *Server {
 		credentials: map[string]string{},
 		credMutex:   sync.Mutex{},
 
-		sessions: map[string]string{},
-		sessMutex:   sync.Mutex{},
+		sessions:  map[string]*SessionData{},
+		sessMutex: sync.Mutex{},
 	}
 }
