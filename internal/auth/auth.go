@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+type LoginRequestBody struct {
+	IsNewUser bool `json:"IsNewUser"`
+}
+
 type LoginResponse struct {
 	PlayerID string `json:"playerID"`
 }
@@ -125,8 +129,6 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("received auth login request at: %v \n", time.Now().UTC())
-
 	// check if the required header is present
 	authHeader := r.Header["Authorization"]
 	if authHeader == nil {
@@ -141,14 +143,40 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check if it is a new user request VS an existing user request
+	lrb := &LoginRequestBody{}
+	err = json.NewDecoder(r.Body).Decode(lrb)
+	if err != nil {
+		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		return
+	}
+
+	isNewUser := lrb.IsNewUser
+	fmt.Printf("received auth login request at: %v , for new user? %v \n", time.Now().UTC(), isNewUser)
+
 	as.credMutex.Lock()
 	defer as.credMutex.Unlock()
 
-	// username should exist in credentials already, and passwords should match
-	password, ok := as.credentials[usr]
-	if !ok || password != pwd {
-		http.Error(w, "invalid credentials", http.StatusBadRequest)
-		return
+	if isNewUser {
+
+		// username should not exist in credentials already
+		_, exists := as.credentials[usr]
+		if exists {
+			http.Error(w, "username already exists, cannot create new user", http.StatusBadRequest)
+			return
+		}
+
+		// add a new entry in the credentials map
+		as.credentials[usr] = pwd
+
+	} else {
+
+		// username should exist in credentials already, and passwords should match
+		password, ok := as.credentials[usr]
+		if !ok || password != pwd {
+			http.Error(w, "invalid credentials", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// generate the player id
