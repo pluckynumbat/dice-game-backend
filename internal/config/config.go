@@ -53,7 +53,6 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: check valid session
 	err := cs.RequestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
