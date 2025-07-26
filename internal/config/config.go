@@ -20,13 +20,14 @@ type GameConfig struct {
 }
 
 type Server struct {
-	gameConfig *GameConfig
+	gameConfig       *GameConfig
+	RequestValidator validation.RequestValidator
 }
 
-func NewConfigServer() *Server {
+func NewConfigServer(rv validation.RequestValidator) *Server {
 	return &Server{
-		&GameConfig{
-			[]LevelConfig{
+		gameConfig: &GameConfig{
+			Levels: []LevelConfig{
 				{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
 				{Level: 2, EnergyCost: 3, TotalRolls: 3, Target: 4, EnergyReward: 5},
 				{Level: 3, EnergyCost: 4, TotalRolls: 4, Target: 2, EnergyReward: 6},
@@ -39,6 +40,7 @@ func NewConfigServer() *Server {
 				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
 			},
 		},
+		RequestValidator: rv,
 	}
 }
 
