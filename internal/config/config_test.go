@@ -1,6 +1,7 @@
 package config
 
 import (
+	"example.com/dice-game-backend/internal/auth"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestNewConfigServer(t *testing.T) {
 
-	configServer := NewConfigServer()
+	configServer := NewConfigServer(auth.NewAuthServer())
 
 	if configServer == nil {
 		t.Fatal("new config server should not return a nil server pointer")
@@ -31,22 +32,33 @@ func TestHandleConfigRequest(t *testing.T) {
 
 	var cs1, cs2 *Server
 
-	cs2 = NewConfigServer()
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/signup", nil)
+	newAuthReq.SetBasicAuth("testuser4", "pass4")
+	authRespRec := httptest.NewRecorder()
+
+	as := auth.NewAuthServer()
+	as.HandleSignupRequest(authRespRec, newAuthReq)
+	sID := authRespRec.Header().Get("Session-Id")
+
+	cs2 = NewConfigServer(as)
 
 	tests := []struct {
 		name            string
 		server          *Server
+		sessionID       string
 		wantStatus      int
 		wantContentType string
 	}{
-		{"nil server", cs1, http.StatusInternalServerError, ""},
-		{"valid server", cs2, http.StatusOK, "application/json"},
+		{"nil server", cs1, "", http.StatusInternalServerError, ""},
+		{"valid server, blank session id", cs2, "", http.StatusUnauthorized, "application/json"},
+		{"valid server, valid session id", cs2, sID, http.StatusOK, "application/json"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
 			newReq := httptest.NewRequest(http.MethodGet, "/config/game-config", nil)
+			newReq.Header.Set("Session-Id", test.sessionID)
 			respRec := httptest.NewRecorder()
 
 			configServer := test.server

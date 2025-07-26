@@ -1,6 +1,7 @@
 package main
 
 import (
+	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
 	"fmt"
@@ -16,9 +17,11 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	configServer := config.NewConfigServer()
+	authServer := auth.NewAuthServer()
+	configServer := config.NewConfigServer(authServer)
+	profileServer := profile.NewProfileServer(authServer)
 
-	profileServer := profile.NewProfileServer()
+	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
 
 	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
 
