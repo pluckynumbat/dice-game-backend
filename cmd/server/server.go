@@ -22,6 +22,7 @@ func main() {
 	profileServer := profile.NewProfileServer(authServer)
 
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
+	mux.HandleFunc("GET /auth/logout", authServer.HandleLogoutRequest)
 
 	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
 

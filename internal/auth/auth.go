@@ -142,6 +142,41 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleLogoutRequest deletes the session if successful
+func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
+
+	if as == nil {
+		http.Error(w, "provided auth server pointer is nil", http.StatusInternalServerError)
+		return
+	}
+
+	// session based validation
+	err := as.ValidateRequest(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	
+	fmt.Printf("received auth logout request at: %v \n", time.Now().UTC())
+
+	// the above validation guarantees that we have an active session which matches the Session-Id header
+	// so we can just delete the required entry
+	sIDHeader := r.Header["Session-Id"]
+	sID := sIDHeader[0]
+
+	as.sessMutex.Lock()
+	defer as.sessMutex.Unlock()
+
+	delete(as.sessions, sID)
+
+	_, err = fmt.Fprint(w, "success")
+	if err != nil {
+		http.Error(w, "could not write response", http.StatusInternalServerError)
+		return
+	}
+}
+
 // decodeAuthHeaderPayload will take the authorization header and return a username and password if successful
 // reference: https://en.wikipedia.org/wiki/Basic_access_authentication
 func (as *Server) decodeAuthHeaderPayload(encodedCred string) (string, string, error) {
