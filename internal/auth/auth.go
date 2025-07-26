@@ -1,7 +1,18 @@
 // Package auth: service which deals with the authenticating the player and managing user sessions
 package auth
 
-import "sync"
+import (
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
 
 type LoginResponse struct {
 	PlayerID string `json:"playerID"`
