@@ -18,8 +18,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	authServer := auth.NewAuthServer()
-	configServer := config.NewConfigServer()
-	profileServer := profile.NewProfileServer()
+	configServer := config.NewConfigServer(authServer)
+	profileServer := profile.NewProfileServer(authServer)
 
 	mux.HandleFunc("POST /auth/signup", authServer.HandleSignupRequest)
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)

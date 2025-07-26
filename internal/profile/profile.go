@@ -3,6 +3,7 @@ package profile
 
 import (
 	"encoding/json"
+	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 	"sync"
@@ -20,12 +21,15 @@ type PlayerData struct {
 type Server struct {
 	players      map[string]PlayerData
 	playersMutex sync.Mutex
+
+	requestValidator validation.RequestValidator
 }
 
-func NewProfileServer() *Server {
+func NewProfileServer(rv validation.RequestValidator) *Server {
 	return &Server{
-		players:      map[string]PlayerData{},
-		playersMutex: sync.Mutex{},
+		players:          map[string]PlayerData{},
+		playersMutex:     sync.Mutex{},
+		requestValidator: rv,
 	}
 }
 
@@ -37,7 +41,12 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// TODO: check valid session
+	err := ps.requestValidator.ValidateRequest(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	newPlayer := &PlayerData{
 		PlayerID: "",
@@ -45,7 +54,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		Energy:   maxEnergy,
 	}
 
-	err := json.NewDecoder(r.Body).Decode(newPlayer)
+	err = json.NewDecoder(r.Body).Decode(newPlayer)
 	if err != nil {
 		http.Error(w, "could not decode player id", http.StatusInternalServerError)
 		return
@@ -80,7 +89,12 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: check valid session
+	err := ps.requestValidator.ValidateRequest(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
 
 	id := r.PathValue("id")
 
@@ -97,7 +111,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err := json.NewEncoder(w).Encode(player)
+	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}

@@ -229,3 +229,36 @@ func (as *Server) generatePlayerID(input string) (string, error) {
 
 	return resultString, nil
 }
+
+// ValidateRequest checks for the session id header in other requests, and the validity of the session if present
+func (as *Server) ValidateRequest(req *http.Request) error {
+
+	sessionIdHeader := req.Header["Session-Id"]
+
+	if sessionIdHeader == nil {
+		return fmt.Errorf("no session id header in the request")
+	}
+
+	// get the session id from the header
+	sID := sessionIdHeader[0]
+
+	as.sessMutex.Lock()
+	defer as.sessMutex.Unlock()
+
+	// check for an active session
+	activeSession, ok := as.sessions[sID]
+	if !ok || sID != activeSession.SessionID {
+		return fmt.Errorf("invalid session in request")
+	}
+
+	// TODO: also check session expiry and do something about it?
+
+	// update the last action time for that session
+	as.sessions[sID] = &SessionData{
+		activeSession.PlayerID,
+		activeSession.SessionID,
+		time.Now().UTC().Unix(),
+	}
+
+	return nil
+}
