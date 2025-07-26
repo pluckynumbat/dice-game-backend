@@ -46,7 +46,7 @@ func NewAuthServer() *Server {
 	}
 }
 
-// HandleLoginRequest responds with a player id (if the player already exists)
+// HandleLoginRequest responds with a player id if successful
 func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	if as == nil {
