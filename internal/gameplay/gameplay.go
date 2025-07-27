@@ -152,9 +152,33 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: get config and player, do basic validation there
+	// decode the request
+	request := &LevelResultRequest{}
+	err = json.NewDecoder(r.Body).Decode(request)
+	if err != nil {
+		http.Error(w, "could not decode the level result request", http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("request for level results for level %v by player id %v \n ", request.PlayerID, request.Level)
 
-	// TODO: check rolls against level requirement, decide win/loss
+
+	// get the config and player, do basic validation there
+	cfg, err := gs.configServer.GetConfig()
+	if err != nil {
+		http.Error(w, "config error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	player, err := gs.profileServer.GetPlayer(request.PlayerID)
+	if err != nil {
+		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if request.Level < 0 || request.Level >= int32(len(cfg.Levels)) || request.Level > player.Level {
+		http.Error(w, "invalid level in request", http.StatusBadRequest)
+		return
+	}
 
 	// TODO: update stats entry for this level and this player when that service is present
 
