@@ -28,7 +28,7 @@ type LevelResultRequest struct {
 }
 
 type LevelResultResponse struct {
-	LevelWon bool               `json:"LevelWon"`
+	LevelWon bool               `json:"levelWon"`
 	Player   profile.PlayerData `json:"playerData"`
 	// TODO: will also send back updated stats
 }
@@ -78,7 +78,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		http.Error(w, "could not decode the entry request", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.PlayerID, entryRequest.Level)
+	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.Level, entryRequest.PlayerID)
 
 	// get the config and the player data
 	cfg, err := gs.configServer.GetConfig()
@@ -159,7 +159,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "could not decode the level result request", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request for level results for level %v by player id %v \n ", request.PlayerID, request.Level)
+	fmt.Printf("request for level results for level %v by player id %v \n ", request.Level, request.PlayerID)
 
 	// get the config and player, do basic validation there
 	cfg, err := gs.configServer.GetConfig()
@@ -185,7 +185,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	levelCount := int32(len(cfg.Levels))
 
 	if request.Rolls == nil || rollCount > levelConfig.TotalRolls {
-		http.Error(w, "invalid roles data in request", http.StatusBadRequest)
+		http.Error(w, "invalid rolls data in request", http.StatusBadRequest)
 		return
 	}
 
