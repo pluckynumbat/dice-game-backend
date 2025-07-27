@@ -161,7 +161,6 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 	fmt.Printf("request for level results for level %v by player id %v \n ", request.PlayerID, request.Level)
 
-
 	// get the config and player, do basic validation there
 	cfg, err := gs.configServer.GetConfig()
 	if err != nil {
@@ -179,6 +178,21 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "invalid level in request", http.StatusBadRequest)
 		return
 	}
+
+	// check rolls against level requirement, decide win/loss and if new level was unlocked
+	levelConfig := cfg.Levels[request.Level-1]
+	rollCount := int32(len(request.Rolls))
+	levelCount := int32(len(cfg.Levels))
+
+	if request.Rolls == nil || rollCount > levelConfig.TotalRolls {
+		http.Error(w, "invalid roles data in request", http.StatusBadRequest)
+		return
+	}
+
+	won := request.Rolls[rollCount-1] == levelConfig.Target
+	newLevelUnlocked := won && request.Level == player.Level && request.Level < levelCount
+
+
 
 	// TODO: update stats entry for this level and this player when that service is present
 
