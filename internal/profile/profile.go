@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 const defaultLevel = 1
@@ -51,9 +52,10 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	}
 
 	newPlayer := &PlayerData{
-		PlayerID: "",
-		Level:    defaultLevel,
-		Energy:   maxEnergy,
+		PlayerID:       "",
+		Level:          defaultLevel,
+		Energy:         maxEnergy,
+		LastUpdateTime: time.Now().UTC().Unix(),
 	}
 
 	err = json.NewDecoder(r.Body).Decode(newPlayer)
