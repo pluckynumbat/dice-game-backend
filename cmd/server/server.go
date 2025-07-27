@@ -33,6 +33,7 @@ func main() {
 	mux.HandleFunc("GET /profile/player-data/{id}", profileServer.HandlePlayerDataRequest)
 
 	mux.HandleFunc("POST /gameplay/entry", gameplayServer.HandleEnterLevelRequest)
+	mux.HandleFunc("POST /gameplay/result", gameplayServer.HandleLevelResultRequest)
 
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
