@@ -21,6 +21,18 @@ type EnterLevelResponse struct {
 	Player        profile.PlayerData `json:"playerData"`
 }
 
+type LevelResultRequest struct {
+	PlayerID string  `json:"playerID"`
+	Level    int32   `json:"level"`
+	Rolls    []int32 `json:"rolls"`
+}
+
+type LevelResultResponse struct {
+	LevelWon bool               `json:"LevelWon"`
+	Player   profile.PlayerData `json:"playerData"`
+	// TODO: will also send back updated stats
+}
+
 type Server struct {
 	configServer  *config.Server
 	profileServer *profile.Server
@@ -39,6 +51,7 @@ func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *pr
 }
 
 // HandleEnterLevelRequest accepts / rejects a request to enter a level based on current player data
+// sends back the acceptance / rejection as well as the updated player data
 func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
