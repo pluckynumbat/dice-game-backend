@@ -192,7 +192,22 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	won := request.Rolls[rollCount-1] == levelConfig.Target
 	newLevelUnlocked := won && request.Level == player.Level && request.Level < levelCount
 
+	// update player data based on win / loss, and if new level was unlocked
+	energyDelta := int32(0)
+	if won {
+		energyDelta = levelConfig.EnergyReward
+	}
 
+	newPlayerLevel := player.Level
+	if newLevelUnlocked {
+		newPlayerLevel += 1
+	}
+
+	updatedPlayer, err := gs.profileServer.UpdatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
+	if err != nil {
+		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// TODO: update stats entry for this level and this player when that service is present
 
