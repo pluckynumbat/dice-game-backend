@@ -131,6 +131,32 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// GetPlayer returns the player data when requested, with updated energy from the passive regeneration
+func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
+
+	if ps == nil {
+		return nil, fmt.Errorf("provided profile server pointer is nil")
+	}
+	ps.playersMutex.Lock()
+	defer ps.playersMutex.Unlock()
+
+	player, ok := ps.players[playerID]
+	if !ok {
+		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+	}
+
+	// passive energy regeneration
+	err := ps.updateEnergy(&player, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// write back to the map
+	ps.players[playerID] = player
+
+	return &player, nil
+}
+
 
 // updateEnergy will update energy values of the given player:
 // first it will update (possibly stale) energy based on passive energy regeneration
