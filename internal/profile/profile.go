@@ -120,3 +120,34 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
 }
+
+
+// updateEnergy will update energy values of the given player:
+// first it will update (possibly stale) energy based on passive energy regeneration
+// then it will update it based on the provided energy delta
+func (ps *Server) updateEnergy(player *PlayerData, newEnergyDelta int32) error {
+
+	if player == nil {
+		return fmt.Errorf("nil player data pointer")
+	}
+
+	now := time.Now().UTC().Unix()
+
+	// 1. make energy values current: (update the energy of the player based
+	// on time passed since last update, and the energy regeneration rate)
+	if now > player.LastUpdateTime {
+
+		extraEnergy := float64(now-player.LastUpdateTime) * energyRegenRate
+		player.Energy = min(player.Energy+int32(extraEnergy), maxEnergy)
+	}
+
+	// 2. update to final value based on provided delta (which can be positive / negative)
+	if newEnergyDelta != 0 {
+		player.Energy = min(player.Energy+newEnergyDelta, maxEnergy)
+	}
+
+	// 3. make the timestamp current
+	player.LastUpdateTime = now
+
+	return nil
+}
