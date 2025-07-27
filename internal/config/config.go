@@ -69,3 +69,13 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
 }
+
+// GetConfig will send the config to other servers when needed
+func (cs *Server) GetConfig() (*GameConfig, error) {
+
+	if cs == nil {
+		return nil, fmt.Errorf("provided config server pointer is nil")
+	}
+
+	return cs.gameConfig, nil
+}
