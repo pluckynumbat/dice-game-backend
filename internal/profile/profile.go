@@ -178,7 +178,7 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 		return nil, err
 	}
 
-	// update level
+	// update level (if needed)
 	if player.Level != newLevel {
 		player.Level = newLevel
 	}

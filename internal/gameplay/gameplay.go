@@ -46,6 +46,11 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if gs.configServer == nil || gs.profileServer == nil {
+		http.Error(w, "config server / profile server pointer is nil, please check construction", http.StatusInternalServerError)
+		return
+	}
+
 	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
@@ -53,13 +58,32 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: decode the request
+	// decode the request
+	entryRequest := &EnterLevelRequest{}
+	err = json.NewDecoder(r.Body).Decode(entryRequest)
+	if err != nil {
+		http.Error(w, "could not decode the entry request", http.StatusBadRequest)
+		return
+	}
+	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.PlayerID, entryRequest.Level)
 
-	fmt.Printf("request to enter level %v by player id %v \n ")
+	// get the config and the player data
+	cfg, err := gs.configServer.GetConfig()
+	if err != nil {
+		http.Error(w, "config error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	// TODO: get the config and the player data
+	if entryRequest.Level < 0 || entryRequest.Level >= int32(len(cfg.Levels)) {
+		http.Error(w, "invalid level in request", http.StatusBadRequest)
+		return
+	}
 
-	// TODO: compare level requirements with player data
+	player, err := gs.profileServer.GetPlayer(entryRequest.PlayerID)
+	if err != nil {
+		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// TODO: if player can enter, reduce the amount of energy
 
