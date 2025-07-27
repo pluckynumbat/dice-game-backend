@@ -87,7 +87,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if entryRequest.Level < 0 || entryRequest.Level >= int32(len(cfg.Levels)) {
+	if entryRequest.Level < 0 || entryRequest.Level > int32(len(cfg.Levels)) {
 		http.Error(w, "invalid level in request", http.StatusBadRequest)
 		return
 	}
@@ -174,7 +174,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if request.Level < 0 || request.Level >= int32(len(cfg.Levels)) || request.Level > player.Level {
+	if request.Level < 0 || request.Level > int32(len(cfg.Levels)) || request.Level > player.Level {
 		http.Error(w, "invalid level in request", http.StatusBadRequest)
 		return
 	}
