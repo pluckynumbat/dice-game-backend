@@ -11,7 +11,7 @@ import (
 	"net/http"
 )
 
-type EnterLevelRequest struct {
+type EnterLevelRequestBody struct {
 	PlayerID string `json:"playerID"`
 	Level    int32  `json:"level"`
 }
@@ -21,7 +21,7 @@ type EnterLevelResponse struct {
 	Player        profile.PlayerData `json:"playerData"`
 }
 
-type LevelResultRequest struct {
+type LevelResultRequestBody struct {
 	PlayerID string  `json:"playerID"`
 	Level    int32   `json:"level"`
 	Rolls    []int32 `json:"rolls"`
@@ -72,7 +72,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	// decode the request
-	entryRequest := &EnterLevelRequest{}
+	entryRequest := &EnterLevelRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(entryRequest)
 	if err != nil {
 		http.Error(w, "could not decode the entry request", http.StatusBadRequest)
@@ -153,7 +153,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// decode the request
-	request := &LevelResultRequest{}
+	request := &LevelResultRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(request)
 	if err != nil {
 		http.Error(w, "could not decode the level result request", http.StatusBadRequest)
