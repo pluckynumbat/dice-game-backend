@@ -3,6 +3,7 @@ package main
 import (
 	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/gameplay"
 	"example.com/dice-game-backend/internal/profile"
 	"fmt"
 	"log"
@@ -21,6 +22,8 @@ func main() {
 	configServer := config.NewConfigServer(authServer)
 	profileServer := profile.NewProfileServer(authServer)
 
+	gameplayServer := gameplay.NewGameplayServer(authServer, configServer, profileServer)
+
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
 	mux.HandleFunc("GET /auth/logout", authServer.HandleLogoutRequest)
 
@@ -28,6 +31,9 @@ func main() {
 
 	mux.HandleFunc("POST /profile/new-player", profileServer.HandleNewPlayerRequest)
 	mux.HandleFunc("GET /profile/player-data/{id}", profileServer.HandlePlayerDataRequest)
+
+	mux.HandleFunc("POST /gameplay/entry", gameplayServer.HandleEnterLevelRequest)
+	mux.HandleFunc("POST /gameplay/result", gameplayServer.HandleLevelResultRequest)
 
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
