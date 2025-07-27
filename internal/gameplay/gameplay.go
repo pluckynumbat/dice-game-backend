@@ -30,6 +30,14 @@ type Server struct {
 	requestValidator validation.RequestValidator
 }
 
+func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server) *Server {
+	return &Server{
+		configServer:     cs,
+		profileServer:    ps,
+		requestValidator: rv,
+	}
+}
+
 // HandleEnterLevelRequest accepts / rejects a request to enter a level based on current player data
 func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request) {
 
