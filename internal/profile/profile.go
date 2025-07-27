@@ -157,6 +157,37 @@ func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 	return &player, nil
 }
 
+// UpdatePlayerData will first apply passive energy regeneration to the player,
+// then apply the given energy delta, and finally change the level of the player if needed
+func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*PlayerData, error) {
+
+	if ps == nil {
+		return nil, fmt.Errorf("provided profile server pointer is nil")
+	}
+	ps.playersMutex.Lock()
+	defer ps.playersMutex.Unlock()
+
+	player, ok := ps.players[playerID]
+	if !ok {
+		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+	}
+
+	// update energy based on passive energy regeneration & new energyDelta
+	err := ps.updateEnergy(&player, energyDelta)
+	if err != nil {
+		return nil, err
+	}
+
+	// update level
+	if player.Level != newLevel {
+		player.Level = newLevel
+	}
+
+	// write the player back to the map
+	ps.players[playerID] = player
+
+	return &player, nil
+}
 
 // updateEnergy will update energy values of the given player:
 // first it will update (possibly stale) energy based on passive energy regeneration
