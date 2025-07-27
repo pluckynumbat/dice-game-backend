@@ -129,3 +129,34 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		http.Error(w, "could not encode the response", http.StatusInternalServerError)
 	}
 }
+
+// HandleLevelResultRequest checks the rolls that the player made in a given level,
+// decides if the level was won or lost, and sends back updated player data
+// TODO: this will also update the stats when that service is in place
+func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Request) {
+
+	if gs == nil {
+		http.Error(w, "provided gameplay server pointer is nil", http.StatusInternalServerError)
+		return
+	}
+
+	if gs.configServer == nil || gs.profileServer == nil {
+		http.Error(w, "config server / profile server pointer is nil, please check construction", http.StatusInternalServerError)
+		return
+	}
+
+	err := gs.requestValidator.ValidateRequest(r)
+	if err != nil {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// TODO: get config and player, do basic validation there
+
+	// TODO: check rolls against level requirement, decide win/loss
+
+	// TODO: update stats entry for this level and this player when that service is present
+
+	// TODO: send the response back with decision, and updated player data (and updated stats when that service is present)
+}
