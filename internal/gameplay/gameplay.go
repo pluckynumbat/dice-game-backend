@@ -210,6 +210,19 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// TODO: update stats entry for this level and this player when that service is present
+	// (update win count, loss count, best score)
 
-	// TODO: send the response back with decision, and updated player data (and updated stats when that service is present)
+	// create the response
+	response := &LevelResultResponse{
+		LevelWon: won,
+		Player:   *updatedPlayer,
+	}
+
+	// send the response back
+	// TODO: (along with updated stats when that service is present)
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		http.Error(w, "could not encode the response", http.StatusInternalServerError)
+	}
 }
