@@ -85,7 +85,13 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// TODO: if player can enter, reduce the amount of energy
+	// create the response
+	entryResponse := &EnterLevelResponse{
+		AccessGranted: false,
+		Player:        *player,
+	}
+
+	energyCost := cfg.Levels[entryRequest.Level-1].EnergyCost
 
 	w.Header().Set("Content-Type", "application/json")
 
