@@ -113,6 +113,16 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// passive energy regeneration
+	err = ps.updateEnergy(&player, 0)
+	if err != nil {
+		http.Error(w, "energy error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// write back to the map
+	ps.players[id] = player
+
 	w.Header().Set("Content-Type", "application/json")
 
 	err = json.NewEncoder(w).Encode(player)
