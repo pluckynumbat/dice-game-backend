@@ -3,10 +3,23 @@
 package gameplay
 
 import (
+	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/validation"
+	"fmt"
+	"net/http"
 )
+
+type EnterLevelRequest struct {
+	PlayerID string `json:"playerID"`
+	Level    int32  `json:"level"`
+}
+
+type EnterLevelResponse struct {
+	AccessGranted bool               `json:"accessGranted"`
+	Player        profile.PlayerData `json:"playerData"`
+}
 
 type Server struct {
 	configServer  *config.Server
