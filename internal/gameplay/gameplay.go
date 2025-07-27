@@ -93,10 +93,25 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 
 	energyCost := cfg.Levels[entryRequest.Level-1].EnergyCost
 
-	w.Header().Set("Content-Type", "application/json")
+	// has the player unlocked the level?
+	// does the player have enough energy to enter the level?
+	if player.Level >= entryRequest.Level && player.Energy >= energyCost {
 
-	// TODO: send level entry acceptance / rejection in response
-	err = json.NewEncoder(w).Encode(&EnterLevelResponse{})
+		entryResponse.AccessGranted = true
+
+		// if player can enter, reduce the amount of energy
+		updatedPlayer, updateErr := gs.profileServer.UpdatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
+		if updateErr != nil {
+			http.Error(w, "player error: "+updateErr.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		entryResponse.Player = *updatedPlayer
+	}
+
+	// send level entry acceptance / rejection in response
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(entryResponse)
 	if err != nil {
 		http.Error(w, "could not encode the response", http.StatusInternalServerError)
 	}
