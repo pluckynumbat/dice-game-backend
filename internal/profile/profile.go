@@ -10,12 +10,14 @@ import (
 )
 
 const defaultLevel = 1
-const maxEnergy = 10
+const maxEnergy = 50
+const energyRegenRate = 0.2 // energy regenerated per second TODO: should this come from a config instead?
 
 type PlayerData struct {
-	PlayerID string `json:"playerID"`
-	Level    int32  `json:"level"`
-	Energy   int32  `json:"energy"`
+	PlayerID       string `json:"playerID"`
+	Level          int32  `json:"level"`
+	Energy         int32  `json:"energy"`
+	LastUpdateTime int64  `json:"lastUpdateTime"`
 }
 
 type Server struct {
