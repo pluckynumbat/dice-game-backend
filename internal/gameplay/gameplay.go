@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -30,22 +31,22 @@ type LevelResultRequestBody struct {
 type LevelResultResponse struct {
 	LevelWon bool               `json:"levelWon"`
 	Player   profile.PlayerData `json:"playerData"`
-	// TODO: will also send back updated stats
+	Stats    stats.PlayerStats  `json:"statsData"`
 }
 
 type Server struct {
 	configServer  *config.Server
 	profileServer *profile.Server
-
-	// TODO: will also need a pointer to the stats service
+	statsServer   *stats.Server
 
 	requestValidator validation.RequestValidator
 }
 
-func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server) *Server {
+func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server, ss *stats.Server) *Server {
 	return &Server{
 		configServer:     cs,
 		profileServer:    ps,
+		statsServer:      ss,
 		requestValidator: rv,
 	}
 }
@@ -140,8 +141,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if gs.configServer == nil || gs.profileServer == nil {
-		http.Error(w, "config server / profile server pointer is nil, please check construction", http.StatusInternalServerError)
+	if gs.configServer == nil || gs.profileServer == nil || gs.statsServer == nil {
+		http.Error(w, "config server / profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
 		return
 	}
 
