@@ -32,12 +32,19 @@ func TestHandleConfigRequest(t *testing.T) {
 
 	var cs1, cs2 *Server
 
-	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/signup", nil)
+	buf := &bytes.Buffer{}
+	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
+	err := json.NewEncoder(buf).Encode(reqBody)
+	if err != nil {
+		t.Fatal("could not encode the request body: " + err.Error())
+	}
+
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
 	newAuthReq.SetBasicAuth("testuser4", "pass4")
 	authRespRec := httptest.NewRecorder()
 
 	as := auth.NewAuthServer()
-	as.HandleSignupRequest(authRespRec, newAuthReq)
+	as.HandleLoginRequest(authRespRec, newAuthReq)
 	sID := authRespRec.Header().Get("Session-Id")
 
 	cs2 = NewConfigServer(as)
