@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 )
+
+const defaultLevelScore = 99 // has not won yet
 
 type EnterLevelRequestBody struct {
 	PlayerID string `json:"playerID"`
@@ -30,22 +33,22 @@ type LevelResultRequestBody struct {
 type LevelResultResponse struct {
 	LevelWon bool               `json:"levelWon"`
 	Player   profile.PlayerData `json:"playerData"`
-	// TODO: will also send back updated stats
+	Stats    stats.PlayerStats  `json:"statsData"`
 }
 
 type Server struct {
 	configServer  *config.Server
 	profileServer *profile.Server
-
-	// TODO: will also need a pointer to the stats service
+	statsServer   *stats.Server
 
 	requestValidator validation.RequestValidator
 }
 
-func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server) *Server {
+func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server, ss *stats.Server) *Server {
 	return &Server{
 		configServer:     cs,
 		profileServer:    ps,
+		statsServer:      ss,
 		requestValidator: rv,
 	}
 }
@@ -140,8 +143,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if gs.configServer == nil || gs.profileServer == nil {
-		http.Error(w, "config server / profile server pointer is nil, please check construction", http.StatusInternalServerError)
+	if gs.configServer == nil || gs.profileServer == nil || gs.statsServer == nil {
+		http.Error(w, "config server / profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
 		return
 	}
 
@@ -209,17 +212,35 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: update stats entry for this level and this player when that service is present
-	// (update win count, loss count, best score)
+	// update stats entry for this level (update win count, loss count, best score if better)
+	newStatsDelta := &stats.PlayerLevelStats{
+		Level:     request.Level,
+		WinCount:  0,
+		LossCount: 0,
+		BestScore: defaultLevelScore,
+	}
+
+	if won {
+		newStatsDelta.WinCount = 1
+		newStatsDelta.BestScore = rollCount
+	} else {
+		newStatsDelta.LossCount = 1
+	}
+
+	updatedStats, err := gs.statsServer.ReturnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
+	if err != nil {
+		http.Error(w, "stats error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// create the response
 	response := &LevelResultResponse{
 		LevelWon: won,
 		Player:   *updatedPlayer,
+		Stats:    *updatedStats,
 	}
 
 	// send the response back
-	// TODO: (along with updated stats when that service is present)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
