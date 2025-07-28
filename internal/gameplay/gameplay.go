@@ -12,6 +12,8 @@ import (
 	"net/http"
 )
 
+const defaultLevelScore = 99 // has not won yet
+
 type EnterLevelRequestBody struct {
 	PlayerID string `json:"playerID"`
 	Level    int32  `json:"level"`
