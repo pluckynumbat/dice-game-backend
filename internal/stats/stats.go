@@ -71,3 +71,18 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
 }
+
+// ReturnUpdatedPlayerStats will update a given PlayerLevelStats entry and return that player's stats
+func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *PlayerLevelStats) (*PlayerStats, error) {
+
+	if ss == nil {
+		return nil, fmt.Errorf("provided stats server pointer is nil")
+	}
+
+	if newStatsDelta == nil {
+		return nil, fmt.Errorf("provided new stats pointer is nil")
+	}
+
+	ss.statsMutex.Lock()
+	defer ss.statsMutex.Unlock()
+}
