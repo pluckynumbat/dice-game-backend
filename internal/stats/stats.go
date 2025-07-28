@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const defaultLevelCount = 10
+
 // PlayerLevelStats are for a given level for a given player
 type PlayerLevelStats struct {
 	Level     int32 `json:"level"`
@@ -85,4 +87,43 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 
 	ss.statsMutex.Lock()
 	defer ss.statsMutex.Unlock()
+
+	// level to look for
+	levelIndex := newStatsDelta.Level - 1
+
+	// get the required player
+	playerStats, present := ss.allStats[playerID]
+
+	if !present {
+		if levelIndex == 0 {
+			// if this is for the first level, this could be the first ever stat entry for that player,
+			// in that case create an empty player stats struct, and an empty level stats slice in it
+			playerStats = PlayerStats{
+				LevelStats: make([]PlayerLevelStats, 0, defaultLevelCount),
+			}
+		} else {
+			// return an error
+			return nil, fmt.Errorf("stats entry for id: %v (level %v) is not present \n", playerID, newStatsDelta.Level)
+		}
+	}
+
+	// check if an entry exists for that level for that player
+	if levelIndex < int32(len(playerStats.LevelStats)) {
+
+		// update the level stats from the given delta input
+		playerStats.LevelStats[levelIndex].WinCount += newStatsDelta.WinCount
+		playerStats.LevelStats[levelIndex].LossCount += newStatsDelta.LossCount
+
+		if newStatsDelta.WinCount == 1 {
+			playerStats.LevelStats[levelIndex].BestScore = min(playerStats.LevelStats[levelIndex].BestScore, newStatsDelta.BestScore)
+		}
+	} else {
+		// if not, just get the data from the given stats delta
+		playerStats.LevelStats = append(playerStats.LevelStats, *newStatsDelta)
+	}
+
+	// write the updated data back to the stats map
+	ss.allStats[playerID] = playerStats
+
+	return &playerStats, nil
 }
