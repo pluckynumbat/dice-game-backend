@@ -210,8 +210,26 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// TODO: update stats entry for this level and this player when that service is present
-	// (update win count, loss count, best score)
+	// update stats entry for this level (update win count, loss count, best score if better)
+	newStatsDelta := &stats.PlayerLevelStats{
+		Level:     request.Level,
+		WinCount:  0,
+		LossCount: 0,
+		BestScore: defaultLevelScore,
+	}
+
+	if won {
+		newStatsDelta.WinCount = 1
+		newStatsDelta.BestScore = rollCount
+	} else {
+		newStatsDelta.LossCount = 1
+	}
+
+	updatedStats, err := gs.statsServer.ReturnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
+	if err != nil {
+		http.Error(w, "stats error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// create the response
 	response := &LevelResultResponse{
