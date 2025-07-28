@@ -237,10 +237,10 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	response := &LevelResultResponse{
 		LevelWon: won,
 		Player:   *updatedPlayer,
+		Stats:    *updatedStats,
 	}
 
 	// send the response back
-	// TODO: (along with updated stats when that service is present)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
