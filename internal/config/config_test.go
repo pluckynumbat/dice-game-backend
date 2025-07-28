@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"example.com/dice-game-backend/internal/auth"
 	"net/http"
 	"net/http/httptest"
