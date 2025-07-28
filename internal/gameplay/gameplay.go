@@ -135,7 +135,6 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 
 // HandleLevelResultRequest checks the rolls that the player made in a given level,
 // decides if the level was won or lost, and sends back updated player data
-// TODO: this will also update the stats when that service is in place
 func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
