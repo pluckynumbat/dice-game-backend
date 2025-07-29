@@ -1,10 +1,14 @@
 package profile
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
@@ -148,6 +152,70 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 
 			statsServer := test.server
 			statsServer.HandleNewPlayerRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &PlayerData{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
+func TestServer_HandlePlayerDataRequest(t *testing.T) {
+
+	as, sID, err := setupTestAuth()
+	if err != nil {
+		t.Fatal("auth setup error: " + err.Error())
+	}
+
+	ps := NewProfileServer(as, config.NewConfigServer(as).GameConfig)
+	ps.players["player2"] = PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}
+
+	tests := []struct {
+		name             string
+		server           *Server
+		sessionID        string
+		playerID         string
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *PlayerData
+	}{
+		{"nil server", nil, "", "", http.StatusInternalServerError, "", nil},
+		{"blank session id", ps, "", "", http.StatusUnauthorized, "application/json", nil},
+		{"invalid session id", ps, "testSessionID", "", http.StatusUnauthorized, "application/json", nil},
+		{"new player", ps, sID, "player1", http.StatusBadRequest, "application/json", nil},
+		{"existing player", ps, sID, "player2", http.StatusOK, "application/json", &PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			newReq := httptest.NewRequest(http.MethodGet, "/profile/player-data/", nil)
+			newReq.SetPathValue("id", test.playerID)
+			newReq.Header.Set("Session-Id", test.sessionID)
+			respRec := httptest.NewRecorder()
+
+			statsServer := test.server
+			statsServer.HandlePlayerDataRequest(respRec, newReq)
 
 			gotStatus := respRec.Result().StatusCode
 
