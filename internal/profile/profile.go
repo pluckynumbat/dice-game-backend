@@ -35,6 +35,7 @@ type Server struct {
 	playersMutex sync.Mutex
 
 	defaultLevel         int32
+	maxLevel             int32
 	maxEnergy            int32
 	energyRegenPerSecond float64
 
@@ -48,6 +49,7 @@ func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Se
 		playersMutex: sync.Mutex{},
 
 		defaultLevel:         gc.DefaultLevel,
+		maxLevel:             int32(len(gc.Levels)),
 		maxEnergy:            gc.MaxEnergy,
 		energyRegenPerSecond: 0,
 
@@ -192,8 +194,8 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 	}
 
 	// update level (if needed)
-	if player.Level != newLevel {
-		player.Level = newLevel
+	if player.Level < newLevel {
+		player.Level = min(newLevel, ps.maxLevel)
 	}
 
 	// write the player back to the map
