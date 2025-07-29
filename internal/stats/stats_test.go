@@ -19,11 +19,11 @@ func TestNewStatsServer(t *testing.T) {
 	statsServer := NewStatsServer(authServer, config.NewConfigServer(authServer).GameConfig)
 
 	if statsServer == nil {
-		t.Fatal("new config server should not return a nil server pointer")
+		t.Fatal("new stats server should not return a nil server pointer")
 	}
 
 	if statsServer.allStats == nil {
-		t.Fatal("new config server should not contain a nil all stats pointer")
+		t.Fatal("new stats server should not contain a nil all stats pointer")
 	}
 }
 
