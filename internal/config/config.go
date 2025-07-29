@@ -17,7 +17,11 @@ type LevelConfig struct {
 }
 
 type GameConfig struct {
-	Levels []LevelConfig `json:"levels"`
+	Levels             []LevelConfig `json:"levels"`
+	DefaultLevel       int32         `json:"defaultLevel"`
+	MaxEnergy          int32         `json:"maxEnergy"`
+	EnergyRegenSeconds int32         `json:"energyRegenSeconds"`
+	DefaultLevelScore  int32         `json:"defaultLevelScore"`
 }
 
 type Server struct {
@@ -40,6 +44,10 @@ func NewConfigServer(rv validation.RequestValidator) *Server {
 				{Level: 9, EnergyCost: 6, TotalRolls: 4, Target: 2, EnergyReward: 8},
 				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
 			},
+			DefaultLevel:       1,
+			MaxEnergy:          50,
+			EnergyRegenSeconds: 5,
+			DefaultLevelScore:  99,
 		},
 		requestValidator: rv,
 	}
