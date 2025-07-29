@@ -6,6 +6,7 @@ import (
 	"example.com/dice-game-backend/internal/auth"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -17,15 +18,15 @@ func TestNewConfigServer(t *testing.T) {
 		t.Fatal("new config server should not return a nil server pointer")
 	}
 
-	if configServer.gameConfig == nil {
+	if configServer.GameConfig == nil {
 		t.Fatal("new config server should not contain a nil game config")
 	}
 
-	if configServer.gameConfig.Levels == nil {
+	if configServer.GameConfig.Levels == nil {
 		t.Fatal("new config server should not contain a game config with nil levels")
 	}
 
-	if len(configServer.gameConfig.Levels) == 0 {
+	if len(configServer.GameConfig.Levels) == 0 {
 		t.Fatal("new config server should not contain a game config with empty levels")
 	}
 }
@@ -57,10 +58,28 @@ func TestHandleConfigRequest(t *testing.T) {
 		sessionID       string
 		wantStatus      int
 		wantContentType string
+		wantResponse    *GameConfig
 	}{
-		{"nil server", cs1, "", http.StatusInternalServerError, ""},
-		{"valid server, blank session id", cs2, "", http.StatusUnauthorized, "application/json"},
-		{"valid server, valid session id", cs2, sID, http.StatusOK, "application/json"},
+		{"nil server", cs1, "", http.StatusInternalServerError, "", nil},
+		{"valid server, blank session id", cs2, "", http.StatusUnauthorized, "application/json", nil},
+		{"valid server, valid session id", cs2, sID, http.StatusOK, "application/json", &GameConfig{
+			Levels: []LevelConfig{
+				{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
+				{Level: 2, EnergyCost: 3, TotalRolls: 3, Target: 4, EnergyReward: 5},
+				{Level: 3, EnergyCost: 4, TotalRolls: 4, Target: 2, EnergyReward: 6},
+				{Level: 4, EnergyCost: 4, TotalRolls: 3, Target: 1, EnergyReward: 6},
+				{Level: 5, EnergyCost: 4, TotalRolls: 2, Target: 5, EnergyReward: 6},
+				{Level: 6, EnergyCost: 5, TotalRolls: 4, Target: 3, EnergyReward: 7},
+				{Level: 7, EnergyCost: 5, TotalRolls: 3, Target: 4, EnergyReward: 7},
+				{Level: 8, EnergyCost: 5, TotalRolls: 2, Target: 1, EnergyReward: 7},
+				{Level: 9, EnergyCost: 6, TotalRolls: 4, Target: 2, EnergyReward: 8},
+				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
+			},
+			DefaultLevel:       1,
+			MaxEnergy:          50,
+			EnergyRegenSeconds: 5,
+			DefaultLevelScore:  99,
+		}},
 	}
 
 	for _, test := range tests {
@@ -84,6 +103,16 @@ func TestHandleConfigRequest(t *testing.T) {
 
 				if gotContentType != test.wantContentType {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &GameConfig{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponse) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponse, gotResponseBody)
 				}
 			}
 		})
