@@ -15,11 +15,13 @@ import (
 )
 
 type LoginRequestBody struct {
-	IsNewUser bool `json:"IsNewUser"`
+	IsNewUser     bool   `json:"IsNewUser"`
+	ServerVersion string `json:"serverVersion"`
 }
 
 type LoginResponse struct {
-	PlayerID string `json:"playerID"`
+	PlayerID      string `json:"playerID"`
+	ServerVersion string `json:"serverVersion"`
 }
 
 type SessionData struct {
