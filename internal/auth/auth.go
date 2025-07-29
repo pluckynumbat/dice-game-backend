@@ -88,8 +88,8 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// otherwise, check the 'IsNewUser' flag from the request
 
 	var isNewUser bool
-	reqServerVersion := lrb.ServerVersion
-	if reqServerVersion != as.serverVersion {
+	requestServerVersion := lrb.ServerVersion
+	if requestServerVersion != as.serverVersion {
 		isNewUser = true
 	} else {
 		isNewUser = lrb.IsNewUser
