@@ -11,6 +11,18 @@ import (
 	"time"
 )
 
+// Profile Specific Errors:
+var serverNilError = fmt.Errorf("provided profile server pointer is nil")
+
+type playerNotFoundErr struct {
+	playerID string
+}
+
+func (err playerNotFoundErr) Error() string {
+	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
+}
+
+// PlayerData stores player related live data like level , energy etc.
 type PlayerData struct {
 	PlayerID       string `json:"playerID"`
 	Level          int32  `json:"level"`
@@ -136,14 +148,14 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
 	player, ok := ps.players[playerID]
 	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+		return nil, playerNotFoundErr{playerID}
 	}
 
 	// passive energy regeneration
@@ -163,14 +175,14 @@ func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
 	player, ok := ps.players[playerID]
 	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+		return nil, playerNotFoundErr{playerID}
 	}
 
 	// update energy based on passive energy regeneration & new energyDelta
