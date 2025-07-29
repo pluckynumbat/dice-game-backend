@@ -103,6 +103,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// player should not exist already
 	_, exists := ps.players[newPlayer.PlayerID]
 	if exists {
 		http.Error(w, "player exists already", http.StatusBadRequest)
@@ -111,10 +112,11 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 
 	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
 
+	// store the new player in the player map
 	ps.players[newPlayer.PlayerID] = *newPlayer
 
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
 	err = json.NewEncoder(w).Encode(ps.players[newPlayer.PlayerID])
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
@@ -136,8 +138,8 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// get the id from the request uri
 	id := r.PathValue("id")
-
 	fmt.Printf("player data requested for id: %v \n ", id)
 
 	player, err := ps.GetPlayer(id)
@@ -146,8 +148,8 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
@@ -163,6 +165,7 @@ func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// look up the player based on the player ID
 	player, ok := ps.players[playerID]
 	if !ok {
 		return nil, playerNotFoundErr{playerID}
@@ -190,6 +193,7 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// look up the player based on the player ID
 	player, ok := ps.players[playerID]
 	if !ok {
 		return nil, playerNotFoundErr{playerID}
