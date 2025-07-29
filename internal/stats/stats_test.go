@@ -27,7 +27,6 @@ func TestNewStatsServer(t *testing.T) {
 	}
 }
 
-
 func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 
 	var s1, s2 *Server
@@ -86,4 +85,98 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestServer_HandlePlayerStatsRequest(t *testing.T) {
+
+	var s1, s2 *Server
+
+	as, sID, err := setupTestAuth()
+	if err != nil {
+		t.Fatal("auth setup error: " + err.Error())
+	}
+
+	s2 = NewStatsServer(as, config.NewConfigServer(as).GameConfig)
+	s2.allStats["player2"] = PlayerStats{
+		LevelStats: []PlayerLevelStats{
+			{1, 2, 3, 1},
+			{2, 1, 4, 2},
+			{3, 0, 1, 99},
+		},
+	}
+
+	tests := []struct {
+		name             string
+		server           *Server
+		sessionID        string
+		playerID         string
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *PlayerStats
+	}{
+		{"nil server", s1, "", "", http.StatusInternalServerError, "", nil},
+		{"valid server, blank session id", s2, "", "", http.StatusUnauthorized, "application/json", nil},
+		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &PlayerStats{nil}},
+		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &PlayerStats{[]PlayerLevelStats{
+			{1, 2, 3, 1},
+			{2, 1, 4, 2},
+			{3, 0, 1, 99},
+		}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			newReq := httptest.NewRequest(http.MethodGet, "/stats/player-stats/", nil)
+			newReq.SetPathValue("id", test.playerID)
+			newReq.Header.Set("Session-Id", test.sessionID)
+			respRec := httptest.NewRecorder()
+
+			statsServer := test.server
+			statsServer.HandlePlayerStatsRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &PlayerStats{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
+func setupTestAuth() (*auth.Server, string, error) {
+	buf := &bytes.Buffer{}
+	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
+	err := json.NewEncoder(buf).Encode(reqBody)
+	if err != nil {
+		return nil, "", err
+	}
+
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
+	newAuthReq.SetBasicAuth("user1", "pass1")
+	authRespRec := httptest.NewRecorder()
+
+	as := auth.NewAuthServer()
+	as.HandleLoginRequest(authRespRec, newAuthReq)
+	sID := authRespRec.Header().Get("Session-Id")
+
+	return as, sID, nil
 }
