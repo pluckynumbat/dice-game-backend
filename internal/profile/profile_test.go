@@ -105,3 +105,92 @@ func TestServer_UpdatePlayerData(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_HandleNewPlayerRequest(t *testing.T) {
+
+	as, sID, err := setupTestAuth()
+	if err != nil {
+		t.Fatal("auth setup error: " + err.Error())
+	}
+
+	ps := NewProfileServer(as, config.NewConfigServer(as).GameConfig)
+	ps.players["player2"] = PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}
+
+	tests := []struct {
+		name             string
+		server           *Server
+		sessionID        string
+		playerID         string
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *PlayerData
+	}{
+		{"nil server", nil, "", "", http.StatusInternalServerError, "", nil},
+		{"blank session id", ps, "", "", http.StatusUnauthorized, "application/json", nil},
+		{"invalid session id", ps, "testSessionID", "", http.StatusUnauthorized, "application/json", nil},
+		{"new player", ps, sID, "player1", http.StatusOK, "application/json", &PlayerData{"player1", 1, 50, time.Now().UTC().Unix()}},
+		{"existing player", ps, sID, "player2", http.StatusBadRequest, "application/json", nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			reqBody := &NewPlayerRequestBody{test.playerID}
+			err2 := json.NewEncoder(buf).Encode(reqBody)
+			if err2 != nil {
+				t.Fatal("could not encode the request body: " + err2.Error())
+			}
+
+			newReq := httptest.NewRequest(http.MethodPost, "/profile/new-player/", buf)
+			newReq.Header.Set("Session-Id", test.sessionID)
+			respRec := httptest.NewRecorder()
+
+			statsServer := test.server
+			statsServer.HandleNewPlayerRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &PlayerData{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
+func setupTestAuth() (*auth.Server, string, error) {
+	buf := &bytes.Buffer{}
+	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
+	err := json.NewEncoder(buf).Encode(reqBody)
+	if err != nil {
+		return nil, "", err
+	}
+
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
+	newAuthReq.SetBasicAuth("user1", "pass1")
+	authRespRec := httptest.NewRecorder()
+
+	as := auth.NewAuthServer()
+	as.HandleLoginRequest(authRespRec, newAuthReq)
+	sID := authRespRec.Header().Get("Session-Id")
+
+	return as, sID, nil
+}
