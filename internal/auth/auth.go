@@ -34,6 +34,8 @@ type Server struct {
 
 	sessions  map[string]*SessionData
 	sessMutex sync.Mutex
+
+	serverVersion string
 }
 
 func NewAuthServer() *Server {
@@ -43,6 +45,8 @@ func NewAuthServer() *Server {
 
 		sessions:  map[string]*SessionData{},
 		sessMutex: sync.Mutex{},
+
+		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	}
 }
 
