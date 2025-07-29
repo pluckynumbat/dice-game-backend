@@ -17,17 +17,21 @@ type LevelConfig struct {
 }
 
 type GameConfig struct {
-	Levels []LevelConfig `json:"levels"`
+	Levels             []LevelConfig `json:"levels"`
+	DefaultLevel       int32         `json:"defaultLevel"`
+	MaxEnergy          int32         `json:"maxEnergy"`
+	EnergyRegenSeconds int32         `json:"energyRegenSeconds"`
+	DefaultLevelScore  int32         `json:"defaultLevelScore"`
 }
 
 type Server struct {
-	gameConfig       *GameConfig
+	GameConfig       *GameConfig
 	requestValidator validation.RequestValidator
 }
 
 func NewConfigServer(rv validation.RequestValidator) *Server {
 	return &Server{
-		gameConfig: &GameConfig{
+		GameConfig: &GameConfig{
 			Levels: []LevelConfig{
 				{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
 				{Level: 2, EnergyCost: 3, TotalRolls: 3, Target: 4, EnergyReward: 5},
@@ -40,6 +44,10 @@ func NewConfigServer(rv validation.RequestValidator) *Server {
 				{Level: 9, EnergyCost: 6, TotalRolls: 4, Target: 2, EnergyReward: 8},
 				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
 			},
+			DefaultLevel:       1,
+			MaxEnergy:          50,
+			EnergyRegenSeconds: 5,
+			DefaultLevelScore:  99,
 		},
 		requestValidator: rv,
 	}
@@ -64,18 +72,8 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(cs.gameConfig)
+	err = json.NewEncoder(w).Encode(cs.GameConfig)
 	if err != nil {
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
-}
-
-// GetConfig will send the config to other servers when needed
-func (cs *Server) GetConfig() (*GameConfig, error) {
-
-	if cs == nil {
-		return nil, fmt.Errorf("provided config server pointer is nil")
-	}
-
-	return cs.gameConfig, nil
 }

@@ -3,16 +3,13 @@ package profile
 
 import (
 	"encoding/json"
+	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
 )
-
-const defaultLevel = 1
-const maxEnergy = 50
-const energyRegenRate = 0.2 // energy regenerated per second TODO: should this come from a config instead?
 
 type PlayerData struct {
 	PlayerID       string `json:"playerID"`
@@ -25,15 +22,32 @@ type Server struct {
 	players      map[string]PlayerData
 	playersMutex sync.Mutex
 
+	defaultLevel         int32
+	maxEnergy            int32
+	energyRegenPerSecond float64
+
 	requestValidator validation.RequestValidator
 }
 
-func NewProfileServer(rv validation.RequestValidator) *Server {
-	return &Server{
-		players:          map[string]PlayerData{},
-		playersMutex:     sync.Mutex{},
+func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
+
+	ps := &Server{
+		players:      map[string]PlayerData{},
+		playersMutex: sync.Mutex{},
+
+		defaultLevel:         gc.DefaultLevel,
+		maxEnergy:            gc.MaxEnergy,
+		energyRegenPerSecond: 0,
+
 		requestValidator: rv,
 	}
+
+	// avoid divide by zero
+	if gc.EnergyRegenSeconds != 0 {
+		ps.energyRegenPerSecond = 1 / float64(gc.EnergyRegenSeconds)
+	}
+
+	return ps
 }
 
 // HandleNewPlayerRequest creates a new player in the map
@@ -53,8 +67,8 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 
 	newPlayer := &PlayerData{
 		PlayerID:       "",
-		Level:          defaultLevel,
-		Energy:         maxEnergy,
+		Level:          ps.defaultLevel,
+		Energy:         ps.maxEnergy,
 		LastUpdateTime: time.Now().UTC().Unix(),
 	}
 
@@ -204,13 +218,13 @@ func (ps *Server) updateEnergy(player *PlayerData, newEnergyDelta int32) error {
 	// on time passed since last update, and the energy regeneration rate)
 	if now > player.LastUpdateTime {
 
-		extraEnergy := float64(now-player.LastUpdateTime) * energyRegenRate
-		player.Energy = min(player.Energy+int32(extraEnergy), maxEnergy)
+		extraEnergy := float64(now-player.LastUpdateTime) * ps.energyRegenPerSecond
+		player.Energy = min(player.Energy+int32(extraEnergy), ps.maxEnergy)
 	}
 
 	// 2. update to final value based on provided delta (which can be positive / negative)
 	if newEnergyDelta != 0 {
-		player.Energy = min(player.Energy+newEnergyDelta, maxEnergy)
+		player.Energy = min(player.Energy+newEnergyDelta, ps.maxEnergy)
 	}
 
 	// 3. make the timestamp current

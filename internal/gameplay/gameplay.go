@@ -37,18 +37,20 @@ type LevelResultResponse struct {
 }
 
 type Server struct {
-	configServer  *config.Server
 	profileServer *profile.Server
 	statsServer   *stats.Server
 
+	gameConfig       *config.GameConfig
 	requestValidator validation.RequestValidator
 }
 
-func NewGameplayServer(rv validation.RequestValidator, cs *config.Server, ps *profile.Server, ss *stats.Server) *Server {
+func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server, gc *config.GameConfig) *Server {
 	return &Server{
-		configServer:     cs,
-		profileServer:    ps,
-		statsServer:      ss,
+		profileServer: ps,
+		statsServer:   ss,
+
+		gameConfig: gc,
+
 		requestValidator: rv,
 	}
 }
@@ -62,8 +64,13 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if gs.configServer == nil || gs.profileServer == nil {
-		http.Error(w, "config server / profile server pointer is nil, please check construction", http.StatusInternalServerError)
+	if gs.gameConfig == nil {
+		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+		return
+	}
+
+	if gs.profileServer == nil || gs.statsServer == nil {
+		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
 		return
 	}
 
@@ -84,12 +91,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.Level, entryRequest.PlayerID)
 
 	// get the config and the player data
-	cfg, err := gs.configServer.GetConfig()
-	if err != nil {
-		http.Error(w, "config error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	cfg := gs.gameConfig
 	if entryRequest.Level < 0 || entryRequest.Level > int32(len(cfg.Levels)) {
 		http.Error(w, "invalid level in request", http.StatusBadRequest)
 		return
@@ -142,8 +144,13 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if gs.configServer == nil || gs.profileServer == nil || gs.statsServer == nil {
-		http.Error(w, "config server / profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
+	if gs.gameConfig == nil {
+		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+		return
+	}
+
+	if gs.profileServer == nil || gs.statsServer == nil {
+		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
 		return
 	}
 
@@ -164,12 +171,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	fmt.Printf("request for level results for level %v by player id %v \n ", request.Level, request.PlayerID)
 
 	// get the config and player, do basic validation there
-	cfg, err := gs.configServer.GetConfig()
-	if err != nil {
-		http.Error(w, "config error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+	cfg := gs.gameConfig
 	player, err := gs.profileServer.GetPlayer(request.PlayerID)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
