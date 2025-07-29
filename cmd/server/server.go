@@ -20,12 +20,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	authServer := auth.NewAuthServer()
-
 	configServer := config.NewConfigServer(authServer)
-	profileServer := profile.NewProfileServer(authServer)
-	statsServer := stats.NewStatsServer(authServer)
 
-	gameplayServer := gameplay.NewGameplayServer(authServer, configServer, profileServer, statsServer)
+	profileServer := profile.NewProfileServer(authServer, configServer.GameConfig)
+	statsServer := stats.NewStatsServer(authServer, configServer.GameConfig)
+	gameplayServer := gameplay.NewGameplayServer(authServer, profileServer, statsServer, configServer.GameConfig)
 
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
 	mux.HandleFunc("GET /auth/logout", authServer.HandleLogoutRequest)
