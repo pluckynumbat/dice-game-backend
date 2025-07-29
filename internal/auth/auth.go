@@ -74,7 +74,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// check if it is a new user request VS an existing user request
+	// decode the request
 	lrb := &LoginRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(lrb)
 	if err != nil {
@@ -82,7 +82,19 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isNewUser := lrb.IsNewUser
+	// check if it is a new user request VS an existing user request
+	// first check the server version, if it does not match with our version,
+	// the request will be considered a new user request
+	// otherwise, check the 'IsNewUser' flag from the request
+
+	var isNewUser bool
+	reqServerVersion := lrb.ServerVersion
+	if reqServerVersion != as.serverVersion {
+		isNewUser = true
+	} else {
+		isNewUser = lrb.IsNewUser
+	}
+
 	fmt.Printf("received auth login request at: %v , for new user? %v \n", time.Now().UTC(), isNewUser)
 
 	as.credMutex.Lock()
@@ -163,7 +175,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
-	
+
 	fmt.Printf("received auth logout request at: %v \n", time.Now().UTC())
 
 	// the above validation guarantees that we have an active session which matches the Session-Id header
