@@ -3,13 +3,12 @@ package stats
 
 import (
 	"encoding/json"
+	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 	"sync"
 )
-
-const defaultLevelCount = 10
 
 // PlayerLevelStats are for a given level for a given player
 type PlayerLevelStats struct {
@@ -28,13 +27,18 @@ type Server struct {
 	allStats   map[string]PlayerStats // this is for all players (and all levels)
 	statsMutex sync.Mutex
 
+	defaultLevelCount int32
+
 	requestValidator validation.RequestValidator
 }
 
-func NewStatsServer(rv validation.RequestValidator) *Server {
+func NewStatsServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
 	return &Server{
-		allStats:         map[string]PlayerStats{},
-		statsMutex:       sync.Mutex{},
+		allStats:   map[string]PlayerStats{},
+		statsMutex: sync.Mutex{},
+
+		defaultLevelCount: int32(len(gc.Levels)),
+
 		requestValidator: rv,
 	}
 }
@@ -99,7 +103,7 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 			// if this is for the first level, this could be the first ever stat entry for that player,
 			// in that case create an empty player stats struct, and an empty level stats slice in it
 			playerStats = PlayerStats{
-				LevelStats: make([]PlayerLevelStats, 0, defaultLevelCount),
+				LevelStats: make([]PlayerLevelStats, 0, ss.defaultLevelCount),
 			}
 		} else {
 			// return an error
