@@ -118,24 +118,11 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	fmt.Printf("player data requested for id: %v \n ", id)
 
-	ps.playersMutex.Lock()
-	defer ps.playersMutex.Unlock()
-
-	player, ok := ps.players[id]
-	if !ok {
-		http.Error(w, "player not found", http.StatusBadRequest)
-		return
-	}
-
-	// passive energy regeneration
-	err = ps.updateEnergy(&player, 0)
+	player, err := ps.GetPlayer(id)
 	if err != nil {
-		http.Error(w, "energy error: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// write back to the map
-	ps.players[id] = player
 
 	w.Header().Set("Content-Type", "application/json")
 
