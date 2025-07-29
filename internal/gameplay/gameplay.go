@@ -64,17 +64,13 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if gs.gameConfig == nil {
-		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+	err := gs.validateDependencies()
+	if err != nil {
+		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if gs.profileServer == nil || gs.statsServer == nil {
-		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
-		return
-	}
-
-	err := gs.requestValidator.ValidateRequest(r)
+	err = gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -144,17 +140,13 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if gs.gameConfig == nil {
-		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+	err := gs.validateDependencies()
+	if err != nil {
+		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if gs.profileServer == nil || gs.statsServer == nil {
-		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
-		return
-	}
-
-	err := gs.requestValidator.ValidateRequest(r)
+	err = gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -247,4 +239,21 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, "could not encode the response", http.StatusInternalServerError)
 	}
+}
+
+func (gs *Server) validateDependencies() error {
+
+	if gs.gameConfig == nil {
+		return fmt.Errorf("provided game config pointer is nil, please check construction")
+	}
+
+	if gs.profileServer == nil {
+		return fmt.Errorf("profile server pointer is nil, please check construction")
+	}
+
+	if gs.statsServer == nil {
+		return fmt.Errorf("stats server pointer is nil, please check construction")
+	}
+
+	return nil
 }
