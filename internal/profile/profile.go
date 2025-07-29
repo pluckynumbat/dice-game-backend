@@ -22,7 +22,12 @@ func (err playerNotFoundErr) Error() string {
 	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
 }
 
-// PlayerData stores player related live data like level , energy etc.
+// NewPlayerRequestBody just contains the player ID
+type NewPlayerRequestBody struct {
+	PlayerID string `json:"playerID"`
+}
+
+// PlayerData (response struct for the requests) stores player related live data like level , energy etc.
 type PlayerData struct {
 	PlayerID       string `json:"playerID"`
 	Level          int32  `json:"level"`
