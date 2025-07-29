@@ -84,17 +84,20 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	newPlayer := &PlayerData{
-		PlayerID:       "",
-		Level:          ps.defaultLevel,
-		Energy:         ps.maxEnergy,
-		LastUpdateTime: time.Now().UTC().Unix(),
-	}
-
-	err = json.NewDecoder(r.Body).Decode(newPlayer)
+	// decode the request body for the player ID
+	decodedReq := &NewPlayerRequestBody{}
+	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode player id", http.StatusInternalServerError)
 		return
+	}
+
+	// create the new player struct from the player ID
+	newPlayer := &PlayerData{
+		PlayerID:       decodedReq.PlayerID,
+		Level:          ps.defaultLevel,
+		Energy:         ps.maxEnergy,
+		LastUpdateTime: time.Now().UTC().Unix(),
 	}
 
 	ps.playersMutex.Lock()
