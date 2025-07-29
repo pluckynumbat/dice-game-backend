@@ -152,8 +152,8 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// provide the player id in the response body
-	err = json.NewEncoder(w).Encode(&LoginResponse{pID})
+	// provide the player id and server version in the response body
+	err = json.NewEncoder(w).Encode(&LoginResponse{pID, as.serverVersion})
 	if err != nil {
 		http.Error(w, "could not create response", http.StatusInternalServerError)
 		return
