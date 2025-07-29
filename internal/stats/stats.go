@@ -10,6 +10,18 @@ import (
 	"sync"
 )
 
+// Stats Specific Errors:
+var serverNilError = fmt.Errorf("provided stats server pointer is nil")
+
+type playerStatsNotFoundErr struct {
+	playerID string
+	level    int32
+}
+
+func (err playerStatsNotFoundErr) Error() string {
+	return fmt.Sprintf("stats entry for id: %v (level %v) is not present \n", err.playerID, err.level)
+}
+
 // PlayerLevelStats are for a given level for a given player
 type PlayerLevelStats struct {
 	Level     int32 `json:"level"`
@@ -47,7 +59,7 @@ func NewStatsServer(rv validation.RequestValidator, gc *config.GameConfig) *Serv
 func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Request) {
 
 	if ss == nil {
-		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -82,7 +94,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *PlayerLevelStats) (*PlayerStats, error) {
 
 	if ss == nil {
-		return nil, fmt.Errorf("provided stats server pointer is nil")
+		return nil, serverNilError
 	}
 
 	if newStatsDelta == nil {
@@ -107,7 +119,7 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 			}
 		} else {
 			// return an error
-			return nil, fmt.Errorf("stats entry for id: %v (level %v) is not present \n", playerID, newStatsDelta.Level)
+			return nil, playerStatsNotFoundErr{playerID, newStatsDelta.Level}
 		}
 	}
 
