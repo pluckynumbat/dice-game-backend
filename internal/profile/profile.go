@@ -11,6 +11,23 @@ import (
 	"time"
 )
 
+// Profile Specific Errors:
+var serverNilError = fmt.Errorf("provided profile server pointer is nil")
+
+type playerNotFoundErr struct {
+	playerID string
+}
+
+func (err playerNotFoundErr) Error() string {
+	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
+}
+
+// NewPlayerRequestBody just contains the player ID
+type NewPlayerRequestBody struct {
+	PlayerID string `json:"playerID"`
+}
+
+// PlayerData (response struct for the requests) stores player related live data like level , energy etc.
 type PlayerData struct {
 	PlayerID       string `json:"playerID"`
 	Level          int32  `json:"level"`
@@ -23,6 +40,7 @@ type Server struct {
 	playersMutex sync.Mutex
 
 	defaultLevel         int32
+	maxLevel             int32
 	maxEnergy            int32
 	energyRegenPerSecond float64
 
@@ -36,6 +54,7 @@ func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Se
 		playersMutex: sync.Mutex{},
 
 		defaultLevel:         gc.DefaultLevel,
+		maxLevel:             int32(len(gc.Levels)),
 		maxEnergy:            gc.MaxEnergy,
 		energyRegenPerSecond: 0,
 
@@ -65,22 +84,26 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	newPlayer := &PlayerData{
-		PlayerID:       "",
-		Level:          ps.defaultLevel,
-		Energy:         ps.maxEnergy,
-		LastUpdateTime: time.Now().UTC().Unix(),
-	}
-
-	err = json.NewDecoder(r.Body).Decode(newPlayer)
+	// decode the request body for the player ID
+	decodedReq := &NewPlayerRequestBody{}
+	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode player id", http.StatusInternalServerError)
 		return
 	}
 
+	// create the new player struct from the player ID
+	newPlayer := &PlayerData{
+		PlayerID:       decodedReq.PlayerID,
+		Level:          ps.defaultLevel,
+		Energy:         ps.maxEnergy,
+		LastUpdateTime: time.Now().UTC().Unix(),
+	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// player should not exist already
 	_, exists := ps.players[newPlayer.PlayerID]
 	if exists {
 		http.Error(w, "player exists already", http.StatusBadRequest)
@@ -89,10 +112,11 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 
 	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
 
+	// store the new player in the player map
 	ps.players[newPlayer.PlayerID] = *newPlayer
 
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
 	err = json.NewEncoder(w).Encode(ps.players[newPlayer.PlayerID])
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
@@ -114,8 +138,8 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// get the id from the request uri
 	id := r.PathValue("id")
-
 	fmt.Printf("player data requested for id: %v \n ", id)
 
 	player, err := ps.GetPlayer(id)
@@ -124,8 +148,8 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
@@ -136,14 +160,15 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// look up the player based on the player ID
 	player, ok := ps.players[playerID]
 	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+		return nil, playerNotFoundErr{playerID}
 	}
 
 	// passive energy regeneration
@@ -163,14 +188,15 @@ func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
+	// look up the player based on the player ID
 	player, ok := ps.players[playerID]
 	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+		return nil, playerNotFoundErr{playerID}
 	}
 
 	// update energy based on passive energy regeneration & new energyDelta
@@ -180,8 +206,8 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 	}
 
 	// update level (if needed)
-	if player.Level != newLevel {
-		player.Level = newLevel
+	if player.Level < newLevel {
+		player.Level = min(newLevel, ps.maxLevel)
 	}
 
 	// write the player back to the map
