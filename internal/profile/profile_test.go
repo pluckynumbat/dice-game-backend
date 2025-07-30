@@ -150,8 +150,8 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 			newReq.Header.Set("Session-Id", test.sessionID)
 			respRec := httptest.NewRecorder()
 
-			statsServer := test.server
-			statsServer.HandleNewPlayerRequest(respRec, newReq)
+			profileServer := test.server
+			profileServer.HandleNewPlayerRequest(respRec, newReq)
 
 			gotStatus := respRec.Result().StatusCode
 
@@ -214,8 +214,8 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 			newReq.Header.Set("Session-Id", test.sessionID)
 			respRec := httptest.NewRecorder()
 
-			statsServer := test.server
-			statsServer.HandlePlayerDataRequest(respRec, newReq)
+			profileServer := test.server
+			profileServer.HandlePlayerDataRequest(respRec, newReq)
 
 			gotStatus := respRec.Result().StatusCode
 
