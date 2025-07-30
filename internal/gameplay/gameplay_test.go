@@ -108,6 +108,107 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 	}
 }
 
+func TestServer_HandleLevelResultRequest(t *testing.T) {
+
+	as, sID, err := setupTestAuth()
+	if err != nil {
+		t.Fatal("auth setup error: " + err.Error())
+	}
+
+	cs := config.NewConfigServer(as)
+	ps := profile.NewProfileServer(as, cs.GameConfig)
+
+	newPlayer2, err := setupTestProfile("player2", sID, ps)
+	if err != nil {
+		t.Fatal("profile setup error: " + err.Error())
+	}
+
+	energyReward := cs.GameConfig.Levels[0].EnergyReward
+
+	ss := stats.NewStatsServer(as, cs.GameConfig)
+
+	gs := NewGameplayServer(as, ps, ss, cs.GameConfig)
+
+	invGS1 := NewGameplayServer(as, nil, ss, cs.GameConfig)
+	invGS2 := NewGameplayServer(as, ps, nil, cs.GameConfig)
+	invGS3 := NewGameplayServer(as, ps, ss, nil)
+
+	tests := []struct {
+		name             string
+		server           *Server
+		sessionID        string
+		requestBody      *LevelResultRequestBody
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *LevelResultResponse
+	}{
+		{"nil server", nil, "", nil, http.StatusInternalServerError, "", nil},
+		{"blank session id", gs, "", nil, http.StatusUnauthorized, "application/json", nil},
+		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
+		{"nil dependency 1", invGS1, sID, nil, http.StatusInternalServerError, "application/json", nil},
+		{"nil dependency 2", invGS2, sID, nil, http.StatusInternalServerError, "application/json", nil},
+		{"nil dependency 3", invGS3, sID, nil, http.StatusInternalServerError, "application/json", nil},
+		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusBadRequest, "application/json", nil},
+		{"invalid level", gs, sID, &LevelResultRequestBody{"player2", 50, nil}, http.StatusBadRequest, "application/json", nil},
+		{"locked level", gs, sID, &LevelResultRequestBody{"player2", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+		{"nil rolls", gs, sID, &LevelResultRequestBody{"player2", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+		{"invalid rolls", gs, sID, &LevelResultRequestBody{"player2", 1, []int32{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+
+		{name: "level loss", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player2", 1, []int32{1, 1}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
+			LevelResult: LevelResult{false, 0, false},
+			Player:      *newPlayer2,
+			Stats:       stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{{1, 0, 1, 99}}},
+		}},
+		{name: "level win", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player2", 1, []int32{1, 6}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
+			LevelResult: LevelResult{true, energyReward, true},
+			Player:      profile.PlayerData{PlayerID: newPlayer2.PlayerID, Level: newPlayer2.Level + 1, Energy: 50, LastUpdateTime: newPlayer2.LastUpdateTime},
+			Stats:       stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{{1, 1, 1, 2}}},
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			err2 := json.NewEncoder(buf).Encode(test.requestBody)
+			if err2 != nil {
+				t.Fatal("could not encode the request body: " + err2.Error())
+			}
+
+			newReq := httptest.NewRequest(http.MethodPost, "/gameplay/result/", buf)
+			newReq.Header.Set("Session-Id", test.sessionID)
+			respRec := httptest.NewRecorder()
+
+			gameplayServer := test.server
+			gameplayServer.HandleLevelResultRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &LevelResultResponse{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
 func setupTestAuth() (*auth.Server, string, error) {
 	buf := &bytes.Buffer{}
 	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
