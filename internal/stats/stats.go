@@ -35,6 +35,11 @@ type PlayerStats struct {
 	LevelStats []PlayerLevelStats `json:"levelStats"`
 }
 
+type PlayerStatsResponse struct {
+	PlayerID    string      `json:"playerID"`
+	PlayerStats PlayerStats `json:"playerStats"`
+}
+
 type Server struct {
 	allStats   map[string]PlayerStats // this is for all players (and all levels)
 	statsMutex sync.Mutex
@@ -83,8 +88,14 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		statsData = &playerStats
 	} // if no stats exist for the player yet, send an empty entry
 
+	// create and send the response
+	response := &PlayerStatsResponse{
+		PlayerID:    id,
+		PlayerStats: *statsData,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(statsData)
+	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}

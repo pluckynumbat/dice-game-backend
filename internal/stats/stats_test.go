@@ -112,16 +112,16 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *PlayerStats
+		wantResponseBody *PlayerStatsResponse
 	}{
 		{"nil server", s1, "", "", http.StatusInternalServerError, "", nil},
 		{"valid server, blank session id", s2, "", "", http.StatusUnauthorized, "application/json", nil},
-		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &PlayerStats{nil}},
-		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &PlayerStats{[]PlayerLevelStats{
+		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &PlayerStatsResponse{"player1", PlayerStats{}}},
+		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &PlayerStatsResponse{"player2", PlayerStats{[]PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
-		}}},
+		}}}},
 	}
 
 	for _, test := range tests {
@@ -148,7 +148,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &PlayerStats{}
+				gotResponseBody := &PlayerStatsResponse{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
