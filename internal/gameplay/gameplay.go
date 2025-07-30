@@ -30,10 +30,17 @@ type LevelResultRequestBody struct {
 	Rolls    []int32 `json:"rolls"`
 }
 
+// LevelResult only contains level result details, and is sent as part of the level result response
+type LevelResult struct {
+	Won              bool  `json:"won"`
+	EnergyReward     int32 `json:"energyReward"`
+	UnlockedNewLevel bool  `json:"unlockedNewLevel"`
+}
+
 type LevelResultResponse struct {
-	LevelWon bool               `json:"levelWon"`
-	Player   profile.PlayerData `json:"playerData"`
-	Stats    stats.PlayerStats  `json:"statsData"`
+	LevelResult LevelResult        `json:"levelResult"`
+	Player      profile.PlayerData `json:"playerData"`
+	Stats       stats.PlayerStats  `json:"statsData"`
 }
 
 type Server struct {
@@ -199,6 +206,14 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		newPlayerLevel += 1
 	}
 
+	// create a new level result to send in the response
+	levelResult := &LevelResult{
+		Won:              won,
+		EnergyReward:     energyDelta,
+		UnlockedNewLevel: newLevelUnlocked,
+	}
+
+	// update the player data to send back in the response
 	updatedPlayer, err := gs.profileServer.UpdatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
@@ -228,9 +243,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 
 	// create the response
 	response := &LevelResultResponse{
-		LevelWon: won,
-		Player:   *updatedPlayer,
-		Stats:    *updatedStats,
+		LevelResult: *levelResult,
+		Player:      *updatedPlayer,
+		Stats:       *updatedStats,
 	}
 
 	// send the response back
