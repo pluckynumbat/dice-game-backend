@@ -91,7 +91,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 
 	var s1, s2 *Server
 
-	as, sID, err := testhelp.SetupTestAuth()
+	as, sID, err := setupTestAuth()
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
