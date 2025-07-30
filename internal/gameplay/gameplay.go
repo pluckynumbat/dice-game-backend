@@ -30,10 +30,17 @@ type LevelResultRequestBody struct {
 	Rolls    []int32 `json:"rolls"`
 }
 
+// LevelResult only contains level result details, and is sent as part of the level result response
+type LevelResult struct {
+	Won              bool  `json:"won"`
+	EnergyReward     int32 `json:"energyReward"`
+	UnlockedNewLevel bool  `json:"unlockedNewLevel"`
+}
+
 type LevelResultResponse struct {
-	LevelWon bool               `json:"levelWon"`
-	Player   profile.PlayerData `json:"playerData"`
-	Stats    stats.PlayerStats  `json:"statsData"`
+	LevelResult LevelResult        `json:"levelResult"`
+	Player      profile.PlayerData `json:"playerData"`
+	Stats       stats.PlayerStats  `json:"statsData"`
 }
 
 type Server struct {
