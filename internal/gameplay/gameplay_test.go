@@ -47,6 +47,10 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 
 	gs := NewGameplayServer(as, ps, ss, cs.GameConfig)
 
+	invGS1 := NewGameplayServer(as, nil, ss, cs.GameConfig)
+	invGS2 := NewGameplayServer(as, ps, nil, cs.GameConfig)
+	invGS3 := NewGameplayServer(as, ps, ss, nil)
+
 	tests := []struct {
 		name             string
 		server           *Server
@@ -61,8 +65,18 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
 		{"invalid player", gs, sID, &EnterLevelRequestBody{"player1", 1}, http.StatusBadRequest, "application/json", nil},
 		{"invalid level", gs, sID, &EnterLevelRequestBody{"player2", 50}, http.StatusBadRequest, "application/json", nil},
+		{"nil dependency 1", invGS1, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
+		{"nil dependency 2", invGS2, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
+		{"nil dependency 3", invGS3, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
 		{"locked level", gs, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusOK, "application/json", &EnterLevelResponse{false, *newPlayerData}},
-		{"valid level", gs, sID, &EnterLevelRequestBody{"player2", 1}, http.StatusOK, "application/json", &EnterLevelResponse{true, profile.PlayerData{newPlayerData.PlayerID, newPlayerData.Level, newPlayerData.Energy - energyCost, newPlayerData.LastUpdateTime}}},
+		{name: "valid level", server: gs, sessionID: sID, requestBody: &EnterLevelRequestBody{"player2", 1}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &EnterLevelResponse{
+			AccessGranted: true,
+			Player: profile.PlayerData{
+				PlayerID:       newPlayerData.PlayerID,
+				Level:          newPlayerData.Level,
+				Energy:         newPlayerData.Energy - energyCost,
+				LastUpdateTime: newPlayerData.LastUpdateTime,
+			}}},
 	}
 
 	for _, test := range tests {
@@ -74,7 +88,7 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 				t.Fatal("could not encode the request body: " + err2.Error())
 			}
 
-			newReq := httptest.NewRequest(http.MethodPost, "/profile/new-player/", buf)
+			newReq := httptest.NewRequest(http.MethodPost, "/gameplay/entry/", buf)
 			newReq.Header.Set("Session-Id", test.sessionID)
 			respRec := httptest.NewRecorder()
 
