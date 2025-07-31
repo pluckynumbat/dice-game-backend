@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+// Auth Specific Errors:
+var serverNilError = fmt.Errorf("provided auth server pointer is nil")
+var missingSessionIDError = fmt.Errorf("no session id header in the request")
+var invalidSessionError = fmt.Errorf("invalid session in request")
+
 type LoginRequestBody struct {
 	IsNewUser     bool   `json:"IsNewUser"`
 	ServerVersion string `json:"serverVersion"`
@@ -56,7 +61,7 @@ func NewAuthServer() *Server {
 func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	if as == nil {
-		http.Error(w, "provided auth server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -164,7 +169,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	if as == nil {
-		http.Error(w, "provided auth server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -200,7 +205,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 func (as *Server) decodeAuthHeaderPayload(encodedCred string) (string, string, error) {
 
 	if as == nil {
-		return "", "", fmt.Errorf("provided auth server pointer is nil")
+		return "", "", serverNilError
 	}
 
 	// trim away the first 6 elements which are the prefix 'Basic '
@@ -239,10 +244,14 @@ func (as *Server) generatePlayerID(input string) (string, error) {
 // ValidateRequest checks for the session id header in other requests, and the validity of the session if present
 func (as *Server) ValidateRequest(req *http.Request) error {
 
+	if as == nil {
+		return serverNilError
+	}
+
 	sessionIdHeader := req.Header["Session-Id"]
 
 	if sessionIdHeader == nil {
-		return fmt.Errorf("no session id header in the request")
+		return missingSessionIDError
 	}
 
 	// get the session id from the header
@@ -254,7 +263,7 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	// check for an active session
 	activeSession, ok := as.sessions[sID]
 	if !ok || sID != activeSession.SessionID {
-		return fmt.Errorf("invalid session in request")
+		return invalidSessionError
 	}
 
 	// TODO: also check session expiry and do something about it?
