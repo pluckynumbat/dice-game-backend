@@ -317,3 +317,25 @@ func (as *Server) deleteAllStaleSessions(timeNow time.Time, expirySeconds int64)
 
 	return nil
 }
+
+// StartPeriodicSessionSweep creates a ticker that will periodically check for stale sessions and delete them
+func (as *Server) StartPeriodicSessionSweep(sweepPeriod time.Duration, sessionExpirySeconds int64) {
+
+	if as == nil {
+		return
+	}
+
+	ticker := time.NewTicker(sweepPeriod)
+
+	go func() {
+		for {
+			timeNow := <-ticker.C
+			fmt.Printf("periodic session sweep tick at %v \n", timeNow.UTC())
+			err := as.deleteAllStaleSessions(timeNow, sessionExpirySeconds)
+			if err != nil {
+				fmt.Printf("error in the periodic session sweep, abort")
+				return
+			}
+		}
+	}()
+}
