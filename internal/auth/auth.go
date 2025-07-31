@@ -38,7 +38,11 @@ type SessionData struct {
 type Server struct {
 	credentials map[string]string
 
-	sessions  map[string]*SessionData
+	sessions map[string]*SessionData
+
+	// like a reverse map to the one above it, keyed by player id, values are session ids,
+	// used to prevent multiple sessions by the same player
+	activePlayerIDs map[string]string
 
 	authMutex sync.Mutex
 
@@ -47,8 +51,10 @@ type Server struct {
 
 func NewAuthServer() *Server {
 	return &Server{
-		credentials: map[string]string{},
-		sessions:  map[string]*SessionData{},
+		credentials:     map[string]string{},
+		sessions:        map[string]*SessionData{},
+		activePlayerIDs: map[string]string{},
+
 		authMutex: sync.Mutex{},
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
@@ -135,17 +141,19 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// generate a new session id from current unix epoch in microseconds
 	sID := strconv.FormatInt(time.Now().UTC().UnixMicro(), 10)
 
-	// TODO: handle this differently?
-	// check that player id doesn't have an already existing session, and if so, delete it
-	for key, val := range as.sessions {
-		if val.PlayerID == pID {
-			fmt.Printf("found an already existing session for the player id %v, deleting it \n", pID)
-			delete(as.sessions, key)
-		}
+	// check that player id doesn't have an already existing session
+	otherSession, exists := as.activePlayerIDs[pID]
+	if exists {
+		// if they do, delete that session,
+		fmt.Printf("found an already existing session for the player id %v, deleting it \n", pID)
+		delete(as.sessions, otherSession)
 	}
 
 	// add a new entry to the sessions map
 	as.sessions[sID] = &SessionData{pID, sID, time.Now().UTC().Unix()}
+
+	// and tie this new session to the player id
+	as.activePlayerIDs[pID] = sID
 
 	// provide the session id in the response header
 	w.Header().Set("Session-Id", sID)
