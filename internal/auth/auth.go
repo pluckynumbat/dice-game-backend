@@ -270,8 +270,6 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 		return invalidSessionError
 	}
 
-	// TODO: also check session expiry and do something about it?
-
 	// update the last action time for that session
 	as.sessions[sID] = &SessionData{
 		activeSession.PlayerID,
@@ -282,11 +280,9 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	return nil
 }
 
+// deleteSession deletes the session from the session map, and the player ID entry from the active player ID map
 func (as *Server) deleteSession(sessionID string) error {
 
-	if as == nil {
-		return serverNilError
-	}
 	as.authMutex.Lock()
 	defer as.authMutex.Unlock()
 
@@ -297,6 +293,27 @@ func (as *Server) deleteSession(sessionID string) error {
 
 	delete(as.activePlayerIDs, session.PlayerID) // delete the association between the player id and the session
 	delete(as.sessions, sessionID)               // delete the session
+
+	return nil
+}
+
+// deleteAllStaleSessions deletes stale sessions based on their last action time
+func (as *Server) deleteAllStaleSessions(timeNow time.Time, expirySeconds int64) error {
+
+	unixNow := timeNow.UTC().Unix()
+
+	for sID, session := range as.sessions {
+
+		stale := (unixNow - session.LastActionTime) > expirySeconds
+
+		if stale {
+			fmt.Printf("found an old session for player id: %v, deleting it \n", session.PlayerID)
+			err := as.deleteSession(sID)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }
