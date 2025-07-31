@@ -191,10 +191,11 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	sIDHeader := r.Header["Session-Id"]
 	sID := sIDHeader[0]
 
-	as.authMutex.Lock()
-	defer as.authMutex.Unlock()
-
-	delete(as.sessions, sID)
+	err = as.deleteSession(sID)
+	if err != nil {
+		http.Error(w, "could not delete session: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
@@ -277,6 +278,25 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 		activeSession.SessionID,
 		time.Now().UTC().Unix(),
 	}
+
+	return nil
+}
+
+func (as *Server) deleteSession(sessionID string) error {
+
+	if as == nil {
+		return serverNilError
+	}
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
+
+	session, ok := as.sessions[sessionID]
+	if !ok {
+		return invalidSessionError
+	}
+
+	delete(as.activePlayerIDs, session.PlayerID) // delete the association between the player id and the session
+	delete(as.sessions, sessionID)               // delete the session
 
 	return nil
 }
