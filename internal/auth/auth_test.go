@@ -37,6 +37,93 @@ func TestNewAuthServer(t *testing.T) {
 	}
 }
 
+func TestServer_HandleLoginRequest(t *testing.T) {
+
+	as := NewAuthServer()
+
+	as.credentials["test2"] = "pass2"
+	as.credentials["test3"] = "pass3"
+
+	unixMicroString := strconv.FormatInt(time.Now().UTC().Unix(), 10)
+	as.sessions[unixMicroString] = &SessionData{"fd61a03a", unixMicroString, time.Now().UTC().Unix() - 60}
+	as.activePlayerIDs["fd61a03a"] = unixMicroString
+
+	tests := []struct {
+		name             string
+		server           *Server
+		addAuthHeader    bool
+		username         string
+		password         string
+		requestBody      *LoginRequestBody
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *LoginResponse
+	}{
+		{"nil server", nil, true, "", "", nil, http.StatusInternalServerError, "", nil},
+		{"no auth header", as, false, "", "", &LoginRequestBody{IsNewUser: true, ServerVersion: "0"}, http.StatusBadRequest, "", nil},
+		{"blank credentials", as, true, "", "", &LoginRequestBody{IsNewUser: true, ServerVersion: "0"}, http.StatusInternalServerError, "", nil},
+		{"invalid credentials", as, true, "test0", "pass0", &LoginRequestBody{IsNewUser: false, ServerVersion: as.serverVersion}, http.StatusBadRequest, "", nil},
+		{"used credentials", as, true, "test2", "pass2", &LoginRequestBody{IsNewUser: true, ServerVersion: as.serverVersion}, http.StatusBadRequest, "", nil},
+
+		{"new user", as, true, "test1", "pass1", &LoginRequestBody{IsNewUser: true, ServerVersion: "0"}, http.StatusOK, "application/json", &LoginResponse{
+			PlayerID:      "1b4f0e98",
+			ServerVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
+		}},
+		{"existing user", as, true, "test2", "pass2", &LoginRequestBody{IsNewUser: false, ServerVersion: as.serverVersion}, http.StatusOK, "application/json", &LoginResponse{
+			PlayerID:      "60303ae2",
+			ServerVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
+		}},
+		{"existing user, existing session", as, true, "test3", "pass3", &LoginRequestBody{IsNewUser: false, ServerVersion: as.serverVersion}, http.StatusOK, "application/json", &LoginResponse{
+			PlayerID:      "fd61a03a",
+			ServerVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			err := json.NewEncoder(buf).Encode(test.requestBody)
+			if err != nil {
+				t.Fatal("could not encode request body")
+			}
+
+			newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
+			if test.addAuthHeader {
+				newAuthReq.SetBasicAuth(test.username, test.password)
+			}
+			authRespRec := httptest.NewRecorder()
+
+			authServer := test.server
+			authServer.HandleLoginRequest(authRespRec, newAuthReq)
+
+			gotStatus := authRespRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := authRespRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &LoginResponse{}
+				err = json.NewDecoder(authRespRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
 func TestServer_ValidateRequest(t *testing.T) {
 
 	as := NewAuthServer()
