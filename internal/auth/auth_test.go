@@ -124,6 +124,53 @@ func TestServer_HandleLoginRequest(t *testing.T) {
 	}
 }
 
+func TestServer_HandleLogoutRequest(t *testing.T) {
+
+	as, sID, err := setupTestAuth()
+	if err != nil {
+		t.Fatal("auth setup error: " + err.Error())
+	}
+
+	tests := []struct {
+		name            string
+		server          *Server
+		sessionID       string
+		wantStatus      int
+		wantContentType string
+	}{
+		{"nil server", nil, "", http.StatusInternalServerError, ""},
+		{"blank session id", as, "", http.StatusUnauthorized, "application/json"},
+		{"invalid session id", as, "testSessionID", http.StatusUnauthorized, "application/json"},
+		{"success", as, sID, http.StatusOK, "text/plain; charset=utf-8"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			newReq := httptest.NewRequest(http.MethodDelete, "/auth/logout/", nil)
+			newReq.Header.Set("Session-Id", test.sessionID)
+			respRec := httptest.NewRecorder()
+
+			authServer := test.server
+			authServer.HandleLogoutRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+			}
+		})
+	}
+}
+
 func TestServer_ValidateRequest(t *testing.T) {
 
 	as := NewAuthServer()
@@ -166,4 +213,23 @@ func TestServer_ValidateRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func setupTestAuth() (*Server, string, error) {
+	buf := &bytes.Buffer{}
+	reqBody := &LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
+	err := json.NewEncoder(buf).Encode(reqBody)
+	if err != nil {
+		return nil, "", err
+	}
+
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
+	newAuthReq.SetBasicAuth("user1", "pass1")
+	authRespRec := httptest.NewRecorder()
+
+	as := NewAuthServer()
+	as.HandleLoginRequest(authRespRec, newAuthReq)
+	sID := authRespRec.Header().Get("Session-Id")
+
+	return as, sID, nil
 }
