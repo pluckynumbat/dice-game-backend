@@ -6,6 +6,7 @@ import (
 	"errors"
 	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/testsetup"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -112,7 +113,7 @@ func TestServer_UpdatePlayerData(t *testing.T) {
 
 func TestServer_HandleNewPlayerRequest(t *testing.T) {
 
-	as, sID, err := setupTestAuth()
+	as, sID, err := testsetup.SetupTestAuth()
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
@@ -182,7 +183,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 
 func TestServer_HandlePlayerDataRequest(t *testing.T) {
 
-	as, sID, err := setupTestAuth()
+	as, sID, err := testsetup.SetupTestAuth()
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
@@ -242,23 +243,4 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 			}
 		})
 	}
-}
-
-func setupTestAuth() (*auth.Server, string, error) {
-	buf := &bytes.Buffer{}
-	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
-	err := json.NewEncoder(buf).Encode(reqBody)
-	if err != nil {
-		return nil, "", err
-	}
-
-	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
-	newAuthReq.SetBasicAuth("user1", "pass1")
-	authRespRec := httptest.NewRecorder()
-
-	as := auth.NewAuthServer()
-	as.HandleLoginRequest(authRespRec, newAuthReq)
-	sID := authRespRec.Header().Get("Session-Id")
-
-	return as, sID, nil
 }

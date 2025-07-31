@@ -7,6 +7,7 @@ import (
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/testsetup"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -29,7 +30,7 @@ func TestNewGameplayServer(t *testing.T) {
 
 func TestServer_HandleEnterLevelRequest(t *testing.T) {
 
-	as, sID, err := setupTestAuth()
+	as, sID, err := testsetup.SetupTestAuth()
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
@@ -124,7 +125,7 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 
 func TestServer_HandleLevelResultRequest(t *testing.T) {
 
-	as, sID, err := setupTestAuth()
+	as, sID, err := testsetup.SetupTestAuth()
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
@@ -221,25 +222,6 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 			}
 		})
 	}
-}
-
-func setupTestAuth() (*auth.Server, string, error) {
-	buf := &bytes.Buffer{}
-	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
-	err := json.NewEncoder(buf).Encode(reqBody)
-	if err != nil {
-		return nil, "", err
-	}
-
-	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
-	newAuthReq.SetBasicAuth("user1", "pass1")
-	authRespRec := httptest.NewRecorder()
-
-	as := auth.NewAuthServer()
-	as.HandleLoginRequest(authRespRec, newAuthReq)
-	sID := authRespRec.Header().Get("Session-Id")
-
-	return as, sID, nil
 }
 
 func setupTestProfile(playerID string, sessionID string, profileServer *profile.Server) (*profile.PlayerData, error) {
