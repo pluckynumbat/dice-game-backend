@@ -37,10 +37,10 @@ type SessionData struct {
 
 type Server struct {
 	credentials map[string]string
-	credMutex   sync.Mutex
 
 	sessions  map[string]*SessionData
-	sessMutex sync.Mutex
+
+	authMutex sync.Mutex
 
 	serverVersion string
 }
@@ -48,10 +48,8 @@ type Server struct {
 func NewAuthServer() *Server {
 	return &Server{
 		credentials: map[string]string{},
-		credMutex:   sync.Mutex{},
-
 		sessions:  map[string]*SessionData{},
-		sessMutex: sync.Mutex{},
+		authMutex: sync.Mutex{},
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	}
@@ -102,8 +100,8 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("received auth login request at: %v , for new user? %v \n", time.Now().UTC(), isNewUser)
 
-	as.credMutex.Lock()
-	defer as.credMutex.Unlock()
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
 
 	if isNewUser {
 
@@ -136,9 +134,6 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	// generate a new session id from current unix epoch in microseconds
 	sID := strconv.FormatInt(time.Now().UTC().UnixMicro(), 10)
-
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
 
 	// TODO: handle this differently?
 	// check that player id doesn't have an already existing session, and if so, delete it
@@ -188,8 +183,8 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	sIDHeader := r.Header["Session-Id"]
 	sID := sIDHeader[0]
 
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
 
 	delete(as.sessions, sID)
 
@@ -257,8 +252,8 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	// get the session id from the header
 	sID := sessionIdHeader[0]
 
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
 
 	// check for an active session
 	activeSession, ok := as.sessions[sID]
