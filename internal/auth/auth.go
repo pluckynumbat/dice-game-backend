@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+// Auth Specific Errors:
+var serverNilError = fmt.Errorf("provided auth server pointer is nil")
+var missingSessionIDError = fmt.Errorf("no session id header in the request")
+var invalidSessionError = fmt.Errorf("invalid session in request")
+
 type LoginRequestBody struct {
 	IsNewUser     bool   `json:"IsNewUser"`
 	ServerVersion string `json:"serverVersion"`
@@ -32,21 +37,25 @@ type SessionData struct {
 
 type Server struct {
 	credentials map[string]string
-	credMutex   sync.Mutex
 
-	sessions  map[string]*SessionData
-	sessMutex sync.Mutex
+	sessions map[string]*SessionData
+
+	// like a reverse map to the one above it, keyed by player id, values are session ids,
+	// used to prevent multiple sessions by the same player
+	activePlayerIDs map[string]string
+
+	authMutex sync.Mutex
 
 	serverVersion string
 }
 
 func NewAuthServer() *Server {
 	return &Server{
-		credentials: map[string]string{},
-		credMutex:   sync.Mutex{},
+		credentials:     map[string]string{},
+		sessions:        map[string]*SessionData{},
+		activePlayerIDs: map[string]string{},
 
-		sessions:  map[string]*SessionData{},
-		sessMutex: sync.Mutex{},
+		authMutex: sync.Mutex{},
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	}
@@ -56,7 +65,7 @@ func NewAuthServer() *Server {
 func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	if as == nil {
-		http.Error(w, "provided auth server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -97,8 +106,8 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("received auth login request at: %v , for new user? %v \n", time.Now().UTC(), isNewUser)
 
-	as.credMutex.Lock()
-	defer as.credMutex.Unlock()
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
 
 	if isNewUser {
 
@@ -132,20 +141,19 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// generate a new session id from current unix epoch in microseconds
 	sID := strconv.FormatInt(time.Now().UTC().UnixMicro(), 10)
 
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
-
-	// TODO: handle this differently?
-	// check that player id doesn't have an already existing session, and if so, delete it
-	for key, val := range as.sessions {
-		if val.PlayerID == pID {
-			fmt.Printf("found an already existing session for the player id %v, deleting it \n", pID)
-			delete(as.sessions, key)
-		}
+	// check that player id doesn't have an already existing session
+	otherSession, exists := as.activePlayerIDs[pID]
+	if exists {
+		// if they do, delete that session,
+		fmt.Printf("found an already existing session for the player id %v, deleting it \n", pID)
+		delete(as.sessions, otherSession)
 	}
 
 	// add a new entry to the sessions map
 	as.sessions[sID] = &SessionData{pID, sID, time.Now().UTC().Unix()}
+
+	// and tie this new session to the player id
+	as.activePlayerIDs[pID] = sID
 
 	// provide the session id in the response header
 	w.Header().Set("Session-Id", sID)
@@ -164,7 +172,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	if as == nil {
-		http.Error(w, "provided auth server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -183,10 +191,11 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	sIDHeader := r.Header["Session-Id"]
 	sID := sIDHeader[0]
 
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
-
-	delete(as.sessions, sID)
+	err = as.deleteSession(sID)
+	if err != nil {
+		http.Error(w, "could not delete session: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
@@ -200,7 +209,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 func (as *Server) decodeAuthHeaderPayload(encodedCred string) (string, string, error) {
 
 	if as == nil {
-		return "", "", fmt.Errorf("provided auth server pointer is nil")
+		return "", "", serverNilError
 	}
 
 	// trim away the first 6 elements which are the prefix 'Basic '
@@ -239,25 +248,27 @@ func (as *Server) generatePlayerID(input string) (string, error) {
 // ValidateRequest checks for the session id header in other requests, and the validity of the session if present
 func (as *Server) ValidateRequest(req *http.Request) error {
 
+	if as == nil {
+		return serverNilError
+	}
+
 	sessionIdHeader := req.Header["Session-Id"]
 
 	if sessionIdHeader == nil {
-		return fmt.Errorf("no session id header in the request")
+		return missingSessionIDError
 	}
 
 	// get the session id from the header
 	sID := sessionIdHeader[0]
 
-	as.sessMutex.Lock()
-	defer as.sessMutex.Unlock()
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
 
 	// check for an active session
 	activeSession, ok := as.sessions[sID]
 	if !ok || sID != activeSession.SessionID {
-		return fmt.Errorf("invalid session in request")
+		return invalidSessionError
 	}
-
-	// TODO: also check session expiry and do something about it?
 
 	// update the last action time for that session
 	as.sessions[sID] = &SessionData{
@@ -267,4 +278,64 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	}
 
 	return nil
+}
+
+// deleteSession deletes the session from the session map, and the player ID entry from the active player ID map
+func (as *Server) deleteSession(sessionID string) error {
+
+	as.authMutex.Lock()
+	defer as.authMutex.Unlock()
+
+	session, ok := as.sessions[sessionID]
+	if !ok {
+		return invalidSessionError
+	}
+
+	delete(as.activePlayerIDs, session.PlayerID) // delete the association between the player id and the session
+	delete(as.sessions, sessionID)               // delete the session
+
+	return nil
+}
+
+// deleteAllStaleSessions deletes stale sessions based on their last action time
+func (as *Server) deleteAllStaleSessions(timeNow time.Time, expirySeconds int64) error {
+
+	unixNow := timeNow.UTC().Unix()
+
+	for sID, session := range as.sessions {
+
+		stale := (unixNow - session.LastActionTime) > expirySeconds
+
+		if stale {
+			fmt.Printf("found an old session for player id: %v, deleting it \n", session.PlayerID)
+			err := as.deleteSession(sID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// StartPeriodicSessionSweep creates a ticker that will periodically check for stale sessions and delete them
+func (as *Server) StartPeriodicSessionSweep(sweepPeriod time.Duration, sessionExpirySeconds int64) {
+
+	if as == nil {
+		return
+	}
+
+	ticker := time.NewTicker(sweepPeriod)
+
+	go func() {
+		for {
+			timeNow := <-ticker.C
+			fmt.Printf("periodic session sweep tick at %v \n", timeNow.UTC())
+			err := as.deleteAllStaleSessions(timeNow, sessionExpirySeconds)
+			if err != nil {
+				fmt.Printf("error in the periodic session sweep, abort")
+				return
+			}
+		}
+	}()
 }
