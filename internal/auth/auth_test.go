@@ -215,6 +215,51 @@ func TestServer_ValidateRequest(t *testing.T) {
 	}
 }
 
+func TestServer_StartPeriodicSessionSweep(t *testing.T) {
+
+	as1 := NewAuthServer()
+	as1.sessions["sessionID1"] = &SessionData{
+		PlayerID:       "playerID1",
+		SessionID:      "sessionID1",
+		LastActionTime: time.Now().UTC().Unix(),
+	}
+	as1.activePlayerIDs["playerID1"] = "sessionID1"
+
+	as2 := NewAuthServer()
+	as2.sessions["sessionID2"] = &SessionData{
+		PlayerID:       "playerID2",
+		SessionID:      "sessionID2",
+		LastActionTime: time.Now().UTC().Unix(),
+	}
+	as2.activePlayerIDs["playerID2"] = "sessionID2"
+
+	tests := []struct {
+		name                string
+		server              *Server
+		period              time.Duration
+		expirySeconds       int64
+		wantSessions        map[string]*SessionData
+		wantActivePlayerIDs map[string]string
+	}{
+		{"stale session", as1, 2 * time.Second, 1, map[string]*SessionData{}, map[string]string{}},
+		{"active session", as2, 2 * time.Second, 20, map[string]*SessionData{"sessionID2": &SessionData{"playerID2", "sessionID2", time.Now().UTC().Unix()}}, map[string]string{"playerID2": "sessionID2"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.server.StartPeriodicSessionSweep(test.period, test.expirySeconds)
+			time.Sleep(test.period + (1 * time.Second))
+
+			if !reflect.DeepEqual(test.server.sessions, test.wantSessions) {
+				t.Errorf("StartPeriodicSessionSweep() gave incorrect results, want: %v, got: %v", test.wantSessions, test.server.sessions)
+			}
+
+			if !reflect.DeepEqual(test.server.activePlayerIDs, test.wantActivePlayerIDs) {
+				t.Errorf("StartPeriodicSessionSweep() gave incorrect results, want: %v, got: %v", test.wantActivePlayerIDs, test.server.activePlayerIDs)
+			}
+		})
+	}
+}
+
 func setupTestAuth() (*Server, string, error) {
 	buf := &bytes.Buffer{}
 	reqBody := &LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
