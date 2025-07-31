@@ -221,7 +221,7 @@ func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 	as1.sessions["sessionID1"] = &SessionData{
 		PlayerID:       "playerID1",
 		SessionID:      "sessionID1",
-		LastActionTime: time.Now().UTC().Unix(),
+		LastActionTime: time.Now().UTC().Unix() - 10,
 	}
 	as1.activePlayerIDs["playerID1"] = "sessionID1"
 
@@ -229,7 +229,7 @@ func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 	as2.sessions["sessionID2"] = &SessionData{
 		PlayerID:       "playerID2",
 		SessionID:      "sessionID2",
-		LastActionTime: time.Now().UTC().Unix(),
+		LastActionTime: time.Now().UTC().Unix() - 10,
 	}
 	as2.activePlayerIDs["playerID2"] = "sessionID2"
 
@@ -241,13 +241,13 @@ func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 		wantSessions        map[string]*SessionData
 		wantActivePlayerIDs map[string]string
 	}{
-		{"stale session", as1, 2 * time.Second, 1, map[string]*SessionData{}, map[string]string{}},
-		{"active session", as2, 2 * time.Second, 20, map[string]*SessionData{"sessionID2": &SessionData{"playerID2", "sessionID2", time.Now().UTC().Unix()}}, map[string]string{"playerID2": "sessionID2"}},
+		{"stale session", as1, 25 * time.Millisecond, 5, map[string]*SessionData{}, map[string]string{}},
+		{"active session", as2, 25 * time.Millisecond, 20, map[string]*SessionData{"sessionID2": &SessionData{"playerID2", "sessionID2", time.Now().UTC().Unix() - 10}}, map[string]string{"playerID2": "sessionID2"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			test.server.StartPeriodicSessionSweep(test.period, test.expirySeconds)
-			time.Sleep(test.period + (1 * time.Second))
+			time.Sleep(test.period + 10*time.Millisecond)
 
 			if !reflect.DeepEqual(test.server.sessions, test.wantSessions) {
 				t.Errorf("StartPeriodicSessionSweep() gave incorrect results, want: %v, got: %v", test.wantSessions, test.server.sessions)
