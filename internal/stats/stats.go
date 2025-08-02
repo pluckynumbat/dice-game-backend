@@ -197,3 +197,38 @@ func (ss *Server) readStatsFromDB(playerID string) (*PlayerStats, error, int32) 
 	return playerStats, nil, invalidStatusCode
 }
 
+// writeStatsToDB makes an internal (server to server) request to the data service to write the required player's stats entries
+func (ss *Server) writeStatsToDB(plStatsWithID *PlayerStatsWithID) error {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(plStatsWithID)
+	if err != nil {
+		return fmt.Errorf("could not encode player data")
+	}
+
+	// create the request
+	req, err := http.NewRequestWithContext(ctx, "POST", "http://:5050/data/stats-internal", reqBody)
+	if err != nil {
+		return fmt.Errorf("request creation error: " + err.Error())
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request sending error: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("internal write stats request was not successful, status code: %v", resp.StatusCode)
+	}
+
+	return nil
+}
