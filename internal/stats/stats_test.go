@@ -5,13 +5,27 @@ import (
 	"errors"
 	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/testsetup"
+	"example.com/dice-game-backend/internal/types"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+
+	dataServer := data.NewDataServer()
+	go dataServer.RunDataServer(constants.DataServerPort)
+
+	code := m.Run()
+
+	os.Exit(code)
+}
 
 func TestNewStatsServer(t *testing.T) {
 
@@ -21,10 +35,6 @@ func TestNewStatsServer(t *testing.T) {
 	if statsServer == nil {
 		t.Fatal("new stats server should not return a nil server pointer")
 	}
-
-	if statsServer.allStats == nil {
-		t.Fatal("new stats server should not contain a nil all stats pointer")
-	}
 }
 
 func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
@@ -33,34 +43,38 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 
 	authServer := auth.NewAuthServer()
 	s2 = NewStatsServer(authServer, config.NewConfigServer(authServer).GameConfig)
-	s2.allStats["player2"] = PlayerStats{
-		nil,
+
+	err := s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{nil}})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
 	}
-	s2.allStats["player3"] = PlayerStats{
-		LevelStats: []PlayerLevelStats{
-			{1, 2, 3, 1},
-			{2, 1, 4, 2},
-			{3, 0, 1, 99},
-		},
+
+	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player3", types.PlayerStats{[]types.PlayerLevelStats{
+		{1, 2, 3, 1},
+		{2, 1, 4, 2},
+		{3, 0, 1, 99},
+	}}})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
 	}
 
 	tests := []struct {
 		name      string
 		server    *Server
 		playerID  string
-		lvlStats  *PlayerLevelStats
-		wantStats *PlayerStats
+		lvlStats  *types.PlayerLevelStats
+		wantStats *types.PlayerStats
 		expError  error
 	}{
-		{"nil server", s1, "player1", &PlayerLevelStats{}, &PlayerStats{}, serverNilError},
-		{"invalid player", s2, "player1", &PlayerLevelStats{5, 1, 0, 4}, nil, playerStatsNotFoundErr{"player1", 5}},
-		{"valid new player", s2, "player2", &PlayerLevelStats{1, 0, 1, 99}, &PlayerStats{
-			LevelStats: []PlayerLevelStats{
+		{"nil server", s1, "player1", &types.PlayerLevelStats{}, &types.PlayerStats{}, serverNilError},
+		{"invalid player", s2, "player1", &types.PlayerLevelStats{5, 1, 0, 4}, nil, playerStatsNotFoundErr{"player1", 5}},
+		{"valid new player", s2, "player2", &types.PlayerLevelStats{1, 0, 1, 99}, &types.PlayerStats{
+			[]types.PlayerLevelStats{
 				{1, 0, 1, 99},
 			},
 		}, nil},
-		{"valid existing player", s2, "player3", &PlayerLevelStats{3, 1, 0, 3}, &PlayerStats{
-			LevelStats: []PlayerLevelStats{
+		{"valid existing player", s2, "player3", &types.PlayerLevelStats{3, 1, 0, 3}, &types.PlayerStats{
+			[]types.PlayerLevelStats{
 				{1, 2, 3, 1},
 				{2, 1, 4, 2},
 				{3, 1, 1, 3},
@@ -97,12 +111,14 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 	}
 
 	s2 = NewStatsServer(as, config.NewConfigServer(as).GameConfig)
-	s2.allStats["player2"] = PlayerStats{
-		LevelStats: []PlayerLevelStats{
-			{1, 2, 3, 1},
-			{2, 1, 4, 2},
-			{3, 0, 1, 99},
-		},
+
+	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{[]types.PlayerLevelStats{
+		{1, 2, 3, 1},
+		{2, 1, 4, 2},
+		{3, 0, 1, 99},
+	}}})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
 	}
 
 	tests := []struct {
@@ -112,12 +128,12 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *PlayerStatsResponse
+		wantResponseBody *types.PlayerStatsWithID
 	}{
 		{"nil server", s1, "", "", http.StatusInternalServerError, "", nil},
 		{"valid server, blank session id", s2, "", "", http.StatusUnauthorized, "application/json", nil},
-		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &PlayerStatsResponse{"player1", PlayerStats{}}},
-		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &PlayerStatsResponse{"player2", PlayerStats{[]PlayerLevelStats{
+		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &types.PlayerStatsWithID{"player1", types.PlayerStats{}}},
+		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &types.PlayerStatsWithID{"player2", types.PlayerStats{[]types.PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
@@ -148,7 +164,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &PlayerStatsResponse{}
+				gotResponseBody := &types.PlayerStatsWithID{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")

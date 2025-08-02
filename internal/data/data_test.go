@@ -3,8 +3,7 @@ package data
 import (
 	"bytes"
 	"encoding/json"
-	"example.com/dice-game-backend/internal/profile"
-	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/types"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -31,7 +30,7 @@ func TestNewDataServer(t *testing.T) {
 func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 
 	ds := NewDataServer()
-	ds.playersDB["player2"] = profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
+	ds.playersDB["player2"] = types.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
 
 	tests := []struct {
 		name             string
@@ -39,11 +38,11 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *profile.PlayerData
+		wantResponseBody *types.PlayerData
 	}{
 		{"nil server", nil, "player1", http.StatusInternalServerError, "application/json", nil},
 		{"invalid player", ds, "player1", http.StatusBadRequest, "application/json", nil},
-		{"existing player", ds, "player2", http.StatusOK, "application/json", &profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}},
+		{"existing player", ds, "player2", http.StatusOK, "application/json", &types.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}},
 	}
 
 	for _, test := range tests {
@@ -69,7 +68,7 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &profile.PlayerData{}
+				gotResponseBody := &types.PlayerData{}
 				err := json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
@@ -86,18 +85,18 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 func TestServer_HandleWritePlayerDataRequest(t *testing.T) {
 
 	ds := NewDataServer()
-	ds.playersDB["player2"] = profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
+	ds.playersDB["player2"] = types.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
 
 	tests := []struct {
 		name            string
 		server          *Server
-		requestPlayer   *profile.PlayerData
+		requestPlayer   *types.PlayerData
 		wantStatus      int
 		wantContentType string
 	}{
 		{"nil server", nil, nil, http.StatusInternalServerError, "text/plain"},
 		{"nil player", ds, nil, http.StatusBadRequest, "text/plain"},
-		{"valid player", ds, &profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}, http.StatusOK, "text/plain"},
+		{"valid player", ds, &types.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}, http.StatusOK, "text/plain"},
 	}
 
 	for _, test := range tests {
@@ -137,8 +136,8 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 
 	ds := NewDataServer()
 
-	ds.statsDB["player2"] = stats.PlayerStats{
-		LevelStats: []stats.PlayerLevelStats{
+	ds.statsDB["player2"] = types.PlayerStats{
+		LevelStats: []types.PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
@@ -151,11 +150,11 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *stats.PlayerStats
+		wantResponseBody *types.PlayerStats
 	}{
 		{"nil server", nil, "", http.StatusInternalServerError, "", nil},
-		{"new user", ds, "player1", http.StatusBadRequest, "application/json", &stats.PlayerStats{}},
-		{"existing user", ds, "player2", http.StatusOK, "application/json", &stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{
+		{"new user", ds, "player1", http.StatusBadRequest, "application/json", &types.PlayerStats{}},
+		{"existing user", ds, "player2", http.StatusOK, "application/json", &types.PlayerStats{LevelStats: []types.PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
@@ -185,7 +184,7 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &stats.PlayerStats{}
+				gotResponseBody := &types.PlayerStats{}
 				err := json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
@@ -202,8 +201,8 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 func TestServer_HandleWritePlayerStatsRequest(t *testing.T) {
 
 	ds := NewDataServer()
-	ds.statsDB["player2"] = stats.PlayerStats{
-		LevelStats: []stats.PlayerLevelStats{
+	ds.statsDB["player2"] = types.PlayerStats{
+		LevelStats: []types.PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
@@ -212,14 +211,14 @@ func TestServer_HandleWritePlayerStatsRequest(t *testing.T) {
 	tests := []struct {
 		name            string
 		server          *Server
-		requestStats    *stats.PlayerStatsWithID
+		requestStats    *types.PlayerStatsWithID
 		wantStatus      int
 		wantContentType string
 	}{
 		{"nil server", nil, nil, http.StatusInternalServerError, "text/plain"},
 		{"nil player", ds, nil, http.StatusBadRequest, "text/plain"},
-		{"new player", ds, &stats.PlayerStatsWithID{PlayerID: "player1", PlayerStats: stats.PlayerStats{}}, http.StatusOK, "text/plain"},
-		{"existing player", ds, &stats.PlayerStatsWithID{PlayerID: "player2", PlayerStats: stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{{1, 2, 3, 1}, {2, 1, 4, 2}, {3, 1, 1, 2}, {4, 0, 1, 99}}}}, http.StatusOK, "text/plain"},
+		{"new player", ds, &types.PlayerStatsWithID{PlayerID: "player1", PlayerStats: types.PlayerStats{}}, http.StatusOK, "text/plain"},
+		{"existing player", ds, &types.PlayerStatsWithID{PlayerID: "player2", PlayerStats: types.PlayerStats{LevelStats: []types.PlayerLevelStats{{1, 2, 3, 1}, {2, 1, 4, 2}, {3, 1, 1, 2}, {4, 0, 1, 99}}}}, http.StatusOK, "text/plain"},
 	}
 
 	for _, test := range tests {
