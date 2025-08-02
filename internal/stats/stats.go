@@ -73,6 +73,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// check for valid session
 	err := ss.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
@@ -80,21 +81,29 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// get the player id from the request path
 	id := r.PathValue("id")
 	fmt.Printf("player stats requested for id: %v \n ", id)
 
 	ss.statsMutex.Lock()
 	defer ss.statsMutex.Unlock()
 
-	statsData := &PlayerStats{}
+	statsData := &PlayerStats{} // create the data struct for the response
 
-	playerStats, ok := ss.allStats[id]
-	if ok {
-		statsData = &playerStats
-	} // if no stats exist for the player yet, send an empty entry
+	// make a request to the data service to read the stats entry for the player
+	plStats, err, statusCode := ss.readStatsFromDB(id)
+	if err != nil {
+		if statusCode == int32(http.StatusBadRequest) {
+			// entry does not exist yet, we will just send back the entry response
+		} else {
+			http.Error(w, "DB read error: "+err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		statsData = plStats
+	}
 
 	// create and send the response
-	response := &PlayerStatsResponse{
+	response := &PlayerStatsWithID{
 		PlayerID:    id,
 		PlayerStats: *statsData,
 	}
