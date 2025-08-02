@@ -7,6 +7,7 @@ import (
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -20,8 +21,8 @@ type EnterLevelRequestBody struct {
 }
 
 type EnterLevelResponse struct {
-	AccessGranted bool               `json:"accessGranted"`
-	Player        profile.PlayerData `json:"playerData"`
+	AccessGranted bool             `json:"accessGranted"`
+	Player        types.PlayerData `json:"playerData"`
 }
 
 type LevelResultRequestBody struct {
@@ -38,9 +39,9 @@ type LevelResult struct {
 }
 
 type LevelResultResponse struct {
-	LevelResult LevelResult        `json:"levelResult"`
-	Player      profile.PlayerData `json:"playerData"`
-	Stats       stats.PlayerStats  `json:"statsData"`
+	LevelResult LevelResult       `json:"levelResult"`
+	Player      types.PlayerData  `json:"playerData"`
+	Stats       types.PlayerStats `json:"statsData"`
 }
 
 type Server struct {
@@ -221,7 +222,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// update stats entry for this level (update win count, loss count, best score if better)
-	newStatsDelta := &stats.PlayerLevelStats{
+	newStatsDelta := &types.PlayerLevelStats{
 		Level:     request.Level,
 		WinCount:  0,
 		LossCount: 0,
