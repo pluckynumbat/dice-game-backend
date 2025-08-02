@@ -2,13 +2,18 @@
 package stats
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
+
+const invalidStatusCode int32 = -1
 
 // Stats Specific Errors:
 var serverNilError = fmt.Errorf("provided stats server pointer is nil")
@@ -154,3 +159,41 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 
 	return &playerStats, nil
 }
+
+// readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
+func (ss *Server) readStatsFromDB(playerID string) (*PlayerStats, error, int32) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:5050/data/stats-internal/%v", playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation error: " + err.Error()), invalidStatusCode
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request sending error: " + err.Error()), invalidStatusCode
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal read stats request was not successful, status code: %v", resp.StatusCode), int32(resp.StatusCode)
+	}
+
+	//decode the response for the player data
+	playerStats := &PlayerStats{}
+	err = json.NewDecoder(resp.Body).Decode(playerStats)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding the player stats: " + err.Error()), invalidStatusCode
+	}
+
+	return playerStats, nil, invalidStatusCode
+}
+

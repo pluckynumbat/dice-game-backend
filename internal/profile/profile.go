@@ -276,7 +276,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*PlayerData, error) {
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("config request was not successful")
+		return nil, fmt.Errorf("internal read player request was not successful, status code %v", resp.StatusCode)
 	}
 
 	//decode the response for the player data
@@ -319,7 +319,7 @@ func (ps *Server) writePlayerToDB(player *PlayerData) error {
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("set player to db request was not successful")
+		return fmt.Errorf("internal write player request was not successful, status code %v", resp.StatusCode)
 	}
 
 	return nil
