@@ -1,4 +1,5 @@
-// Package data: is the storage service for the backend, it stores player data and player stats
+// Package data: the storage service for the backend, it stores player data and player stats
+// All requests to this server are internal (only come from other servers in the backend)
 package data
 
 import (
@@ -22,7 +23,15 @@ type playerNotFoundErr struct {
 }
 
 func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found in the DB \n", err.playerID)
+	return fmt.Sprintf("player with id: %v was not found in the player DB \n", err.playerID)
+}
+
+type playerStatsNotFoundErr struct {
+	playerID string
+}
+
+func (err playerStatsNotFoundErr) Error() string {
+	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB \n", err.playerID)
 }
 
 type Server struct {
@@ -59,6 +68,9 @@ func (ds *Server) RunDataServer() {
 	mux.HandleFunc("POST /data/player-internal", ds.HandleWritePlayerDataRequest)
 	mux.HandleFunc("GET /data/player-internal/{id}", ds.HandleReadPlayerDataRequest)
 
+	mux.HandleFunc("POST /data/stats-internal", ds.HandleWritePlayerStatsRequest)
+	mux.HandleFunc("GET /data/stats-internal/{id}", ds.HandleReadPlayerStatsRequest)
+
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -80,7 +92,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fmt.Printf("setting player DB entry for id: %v \n ", decodedReq.PlayerID)
+	fmt.Printf("writing player DB entry for id: %v \n ", decodedReq.PlayerID)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
