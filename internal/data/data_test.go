@@ -39,8 +39,9 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 		wantContentType  string
 		wantResponseBody *profile.PlayerData
 	}{
+		{"nil server", nil, "player1", http.StatusInternalServerError, "application/json", nil},
 		{"invalid player", ds, "player1", http.StatusBadRequest, "application/json", nil},
-		{name: "existing player", server: ds, playerID: "player2", wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}},
+		{"existing player", ds, "player2", http.StatusOK, "application/json", &profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}},
 	}
 
 	for _, test := range tests {
@@ -124,6 +125,72 @@ func TestServer_HandleWritePlayerDataRequest(t *testing.T) {
 
 				if gotContentType != test.wantContentType {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+			}
+		})
+	}
+}
+
+func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
+
+	ds := NewDataServer()
+
+	ds.statsDB["player2"] = stats.PlayerStats{
+		LevelStats: []stats.PlayerLevelStats{
+			{1, 2, 3, 1},
+			{2, 1, 4, 2},
+			{3, 0, 1, 99},
+		},
+	}
+
+	tests := []struct {
+		name             string
+		server           *Server
+		playerID         string
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *stats.PlayerStats
+	}{
+		{"nil server", nil, "", http.StatusInternalServerError, "", nil},
+		{"new user", ds, "player1", http.StatusBadRequest, "application/json", &stats.PlayerStats{}},
+		{"existing user", ds, "player2", http.StatusOK, "application/json", &stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{
+			{1, 2, 3, 1},
+			{2, 1, 4, 2},
+			{3, 0, 1, 99},
+		}}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			newReq := httptest.NewRequest(http.MethodGet, "/data/stats-internal/", nil)
+			newReq.SetPathValue("id", test.playerID)
+			respRec := httptest.NewRecorder()
+
+			dataServer := test.server
+			dataServer.HandleReadPlayerStatsRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &stats.PlayerStats{}
+				err := json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
 				}
 			}
 		})
