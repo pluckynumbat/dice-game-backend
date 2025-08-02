@@ -2,8 +2,10 @@
 package data
 
 import (
+	"encoding/json"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -31,4 +33,21 @@ func NewDataServer() *Server {
 	}
 
 	return ds
+}
+
+// RunDataServer runs a given data server on the designated port
+func (ds *Server) RunDataServer() {
+
+	if ds == nil {
+		fmt.Println(serverNilError)
+		return
+	}
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /data/player-internal", ds.HandleSetPlayerRequest)
+	mux.HandleFunc("GET /data/player-internal/{id}", ds.HandleGetPlayerRequest)
+
+	addr := serverHost + ":" + serverPort
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
