@@ -31,6 +31,7 @@ func (err playerStatsNotFoundErr) Error() string {
 	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB \n", err.playerID)
 }
 
+// Server is the core data service provider
 type Server struct {
 	playersDB    map[string]types.PlayerData
 	playersMutex sync.Mutex
@@ -39,6 +40,7 @@ type Server struct {
 	statsMutex sync.Mutex
 }
 
+// NewDataServer returns an initialized pointer to the data server
 func NewDataServer() *Server {
 
 	ds := &Server{
