@@ -3,4 +3,6 @@ package constants
 
 const CommonHost = ""
 
-const DataServerPort = "5050"
+const AuthServerPort = "10101"
+const ConfigServerPort = "40404"
+const DataServerPort = "50505"

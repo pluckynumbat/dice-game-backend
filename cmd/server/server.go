@@ -35,6 +35,7 @@ func main() {
 
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
 	mux.HandleFunc("DELETE /auth/logout", authServer.HandleLogoutRequest)
+	mux.HandleFunc("POST /auth/validation-internal", authServer.HandleValidateRequest)
 
 	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
 

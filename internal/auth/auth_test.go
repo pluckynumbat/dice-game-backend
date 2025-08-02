@@ -215,6 +215,60 @@ func TestServer_ValidateRequest(t *testing.T) {
 	}
 }
 
+func TestServer_ValidateRequestHandler(t *testing.T) {
+	as := NewAuthServer()
+	as.sessions["testsessionid3"] = &SessionData{
+		PlayerID:       "",
+		SessionID:      "testsessionid3",
+		LastActionTime: 0,
+	}
+
+	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/validate-internal/", nil)
+
+	newAuthReq2 := httptest.NewRequest(http.MethodPost, "/auth/validate-internal/", nil)
+	newAuthReq2.Header.Set("Session-Id", "test")
+
+	newAuthReq3 := httptest.NewRequest(http.MethodPost, "/auth/validate-internal/", nil)
+	newAuthReq3.Header.Set("Session-Id", "testsessionid3")
+
+	tests := []struct {
+		name            string
+		server          *Server
+		httpRequest     *http.Request
+		wantStatus      int
+		wantContentType string
+	}{
+		{"nil server", nil, nil, http.StatusInternalServerError, ""},
+		{"blank session id", as, newAuthReq, http.StatusUnauthorized, ""},
+		{"invalid session", as, newAuthReq2, http.StatusUnauthorized, ""},
+		{"valid session", as, newAuthReq3, http.StatusOK, "text/plain; charset=utf-8"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			respRec := httptest.NewRecorder()
+
+			authServer := test.server
+			authServer.HandleValidateRequest(respRec, test.httpRequest)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+			}
+		})
+	}
+}
+
 func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 
 	as1 := NewAuthServer()

@@ -6,13 +6,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"example.com/dice-game-backend/internal/constants"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// session sweeper related constants
+const sessionSweepPeriod time.Duration = 6 * time.Hour
+const sessionExpirySeconds int64 = 24 * 60 * 60 // 1 day
 
 // Auth Specific Errors:
 var serverNilError = fmt.Errorf("provided auth server pointer is nil")
@@ -35,6 +41,7 @@ type SessionData struct {
 	LastActionTime int64
 }
 
+// Server is the core auth service provider
 type Server struct {
 	credentials map[string]string
 
@@ -49,6 +56,7 @@ type Server struct {
 	serverVersion string
 }
 
+// NewAuthServer returns an initialized pointer to the auth server
 func NewAuthServer() *Server {
 	return &Server{
 		credentials:     map[string]string{},
@@ -59,6 +67,26 @@ func NewAuthServer() *Server {
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	}
+}
+
+// RunAuthServer runs a given auth server on the given port
+func (as *Server) RunAuthServer(port string) {
+
+	if as == nil {
+		fmt.Println(serverNilError)
+	}
+
+	as.StartPeriodicSessionSweep(sessionSweepPeriod, sessionExpirySeconds)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /auth/login", as.HandleLoginRequest)
+	mux.HandleFunc("DELETE /auth/logout", as.HandleLogoutRequest)
+
+	mux.HandleFunc("POST /auth/validation-internal", as.HandleValidateRequest)
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleLoginRequest responds with a player id if successful
@@ -278,6 +306,29 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	}
 
 	return nil
+}
+
+// HandleValidateRequest is a wrapper around the above method, used when the server is fielding
+// internal requests for session validation from other servers
+func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) {
+
+	if as == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err := as.ValidateRequest(r)
+	if err != nil {
+		http.Error(w, serverNilError.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// provide the success response, if the status is 200, validation will be considered to be successful
+	_, err = fmt.Fprint(w, "success")
+	if err != nil {
+		http.Error(w, "could not write response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // deleteSession deletes the session from the session map, and the player ID entry from the active player ID map
