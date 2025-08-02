@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"example.com/dice-game-backend/internal/auth"
-	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/testsetup"
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 func TestNewProfileServer(t *testing.T) {
 
 	authServer := auth.NewAuthServer()
-	profileServer := NewProfileServer(authServer, config.NewConfigServer(authServer).GameConfig)
+	profileServer := NewProfileServer(authServer)
 
 	if profileServer == nil {
 		t.Fatal("new profile server should not return a nil server pointer")
@@ -42,7 +41,7 @@ func TestNewProfileServer(t *testing.T) {
 func TestServer_GetPlayer(t *testing.T) {
 
 	authServer := auth.NewAuthServer()
-	ps := NewProfileServer(authServer, config.NewConfigServer(authServer).GameConfig)
+	ps := NewProfileServer(authServer)
 
 	err := ps.writePlayerToDB(&types.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()})
 	if err != nil {
@@ -84,7 +83,7 @@ func TestServer_GetPlayer(t *testing.T) {
 func TestServer_UpdatePlayerData(t *testing.T) {
 
 	authServer := auth.NewAuthServer()
-	ps := NewProfileServer(authServer, config.NewConfigServer(authServer).GameConfig)
+	ps := NewProfileServer(authServer)
 
 	err := ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
@@ -141,7 +140,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := NewProfileServer(as, config.NewConfigServer(as).GameConfig)
+	ps := NewProfileServer(as)
 
 	err = ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
@@ -215,7 +214,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := NewProfileServer(as, config.NewConfigServer(as).GameConfig)
+	ps := NewProfileServer(as)
 
 	err = ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
