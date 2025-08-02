@@ -1,14 +1,19 @@
-// Package stats: service which holds and provides details regarding relevant player stats
+// Package stats: service which provides details regarding relevant player stats
 package stats
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
+
+const invalidStatusCode int32 = -1
 
 // Stats Specific Errors:
 var serverNilError = fmt.Errorf("provided stats server pointer is nil")
@@ -35,13 +40,14 @@ type PlayerStats struct {
 	LevelStats []PlayerLevelStats `json:"levelStats"`
 }
 
-type PlayerStatsResponse struct {
+// PlayerStatsWithID is used as the client response for the public get stats api
+// and as the request body for the internal request to the data service to write stats to the DB
+type PlayerStatsWithID struct {
 	PlayerID    string      `json:"playerID"`
 	PlayerStats PlayerStats `json:"playerStats"`
 }
 
 type Server struct {
-	allStats   map[string]PlayerStats // this is for all players (and all levels)
 	statsMutex sync.Mutex
 
 	defaultLevelCount int32
@@ -51,7 +57,6 @@ type Server struct {
 
 func NewStatsServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
 	return &Server{
-		allStats:   map[string]PlayerStats{},
 		statsMutex: sync.Mutex{},
 
 		defaultLevelCount: int32(len(gc.Levels)),
@@ -68,6 +73,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// check for valid session
 	err := ss.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
@@ -75,21 +81,29 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// get the player id from the request path
 	id := r.PathValue("id")
 	fmt.Printf("player stats requested for id: %v \n ", id)
 
 	ss.statsMutex.Lock()
 	defer ss.statsMutex.Unlock()
 
-	statsData := &PlayerStats{}
+	statsData := &PlayerStats{} // create the data struct for the response
 
-	playerStats, ok := ss.allStats[id]
-	if ok {
-		statsData = &playerStats
-	} // if no stats exist for the player yet, send an empty entry
+	// make a request to the data service to read the stats entry for the player
+	plStats, err, statusCode := ss.readStatsFromDB(id)
+	if err != nil {
+		if statusCode == int32(http.StatusBadRequest) {
+			// entry does not exist yet, we will just send back the entry response
+		} else {
+			http.Error(w, "DB read error: "+err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		statsData = plStats
+	}
 
 	// create and send the response
-	response := &PlayerStatsResponse{
+	response := &PlayerStatsWithID{
 		PlayerID:    id,
 		PlayerStats: *statsData,
 	}
@@ -118,14 +132,23 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 	// level to look for
 	levelIndex := newStatsDelta.Level - 1
 
-	// get the required player
-	playerStats, present := ss.allStats[playerID]
+	// make a request to the data service to read the stats entry for the player
+	present := true // to store if there is an entry for the required player id in the stats DB
+	playerStats, err, statusCode := ss.readStatsFromDB(playerID)
+	if err != nil {
+		if statusCode == int32(http.StatusBadRequest) {
+			// entry does not exist yet, this can still be a valid case (dealt with below) if the player has no stats yet
+			present = false
+		} else {
+			return nil, fmt.Errorf("DB read error: " + err.Error())
+		}
+	}
 
 	if !present {
 		if levelIndex == 0 {
 			// if this is for the first level, this could be the first ever stat entry for that player,
 			// in that case create an empty player stats struct, and an empty level stats slice in it
-			playerStats = PlayerStats{
+			playerStats = &PlayerStats{
 				LevelStats: make([]PlayerLevelStats, 0, ss.defaultLevelCount),
 			}
 		} else {
@@ -149,8 +172,85 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 		playerStats.LevelStats = append(playerStats.LevelStats, *newStatsDelta)
 	}
 
-	// write the updated data back to the stats map
-	ss.allStats[playerID] = playerStats
+	// make a request to the data service to write the stats entry for the player
+	plStatsWithID := &PlayerStatsWithID{playerID, *playerStats}
+	err = ss.writeStatsToDB(plStatsWithID)
+	if err != nil {
+		return nil, fmt.Errorf("DB write error: " + err.Error())
+	}
 
-	return &playerStats, nil
+	return playerStats, nil
+}
+
+// readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
+func (ss *Server) readStatsFromDB(playerID string) (*PlayerStats, error, int32) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:5050/data/stats-internal/%v", playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation error: " + err.Error()), invalidStatusCode
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request sending error: " + err.Error()), invalidStatusCode
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal read stats request was not successful, status code: %v", resp.StatusCode), int32(resp.StatusCode)
+	}
+
+	//decode the response for the player data
+	playerStats := &PlayerStats{}
+	err = json.NewDecoder(resp.Body).Decode(playerStats)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding the player stats: " + err.Error()), invalidStatusCode
+	}
+
+	return playerStats, nil, invalidStatusCode
+}
+
+// writeStatsToDB makes an internal (server to server) request to the data service to write the required player's stats entries
+func (ss *Server) writeStatsToDB(plStatsWithID *PlayerStatsWithID) error {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(plStatsWithID)
+	if err != nil {
+		return fmt.Errorf("could not encode player data")
+	}
+
+	// create the request
+	req, err := http.NewRequestWithContext(ctx, "POST", "http://:5050/data/stats-internal", reqBody)
+	if err != nil {
+		return fmt.Errorf("request creation error: " + err.Error())
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request sending error: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("internal write stats request was not successful, status code: %v", resp.StatusCode)
+	}
+
+	return nil
 }
