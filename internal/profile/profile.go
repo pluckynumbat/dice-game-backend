@@ -2,6 +2,8 @@
 package profile
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/validation"
@@ -27,7 +29,8 @@ type NewPlayerRequestBody struct {
 	PlayerID string `json:"playerID"`
 }
 
-// PlayerData (response struct for the requests) stores player related live data like level , energy etc.
+// PlayerData (response struct for the client requests and request body for write requests to the data service)
+// stores player related live data like level , energy etc.
 type PlayerData struct {
 	PlayerID       string `json:"playerID"`
 	Level          int32  `json:"level"`
@@ -103,21 +106,26 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	// player should not exist already
-	_, exists := ps.players[newPlayer.PlayerID]
-	if exists {
+	// check with the data service to see if the player exists already (they should not)
+	// so successful get here means failure for us!
+	_, err = ps.readPlayerFromDB(decodedReq.PlayerID)
+	if err == nil {
 		http.Error(w, "player exists already", http.StatusBadRequest)
 		return
 	}
 
 	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
 
-	// store the new player in the player map
-	ps.players[newPlayer.PlayerID] = *newPlayer
+	// tell the data service to store the new player in the player DB
+	err = ps.writePlayerToDB(newPlayer)
+	if err != nil {
+		http.Error(w, "DB write error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(ps.players[newPlayer.PlayerID])
+	err = json.NewEncoder(w).Encode(newPlayer)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
@@ -162,25 +170,29 @@ func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
 	if ps == nil {
 		return nil, serverNilError
 	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	// look up the player based on the player ID
-	player, ok := ps.players[playerID]
-	if !ok {
-		return nil, playerNotFoundErr{playerID}
+	// send request to the data service to look the player up
+	player, err := ps.readPlayerFromDB(playerID)
+	if err != nil {
+		return nil, fmt.Errorf("DB read error: " + err.Error())
 	}
 
 	// passive energy regeneration
-	err := ps.updateEnergy(&player, 0)
+	err = ps.updateEnergy(player, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	// write back to the map
-	ps.players[playerID] = player
+	// send request to the data service to write the player back to the DB
+	err = ps.writePlayerToDB(player)
+	if err != nil {
+		return nil, fmt.Errorf("DB write error: " + err.Error())
+	}
 
-	return &player, nil
+	return player, nil
 }
 
 // UpdatePlayerData will first apply passive energy regeneration to the player,
@@ -190,17 +202,18 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 	if ps == nil {
 		return nil, serverNilError
 	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	// look up the player based on the player ID
-	player, ok := ps.players[playerID]
-	if !ok {
-		return nil, playerNotFoundErr{playerID}
+	// send request to the data service to look the player up
+	player, err := ps.readPlayerFromDB(playerID)
+	if err != nil {
+		return nil, fmt.Errorf("DB read error: " + err.Error())
 	}
 
 	// update energy based on passive energy regeneration & new energyDelta
-	err := ps.updateEnergy(&player, energyDelta)
+	err = ps.updateEnergy(player, energyDelta)
 	if err != nil {
 		return nil, err
 	}
@@ -210,10 +223,13 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 		player.Level = min(newLevel, ps.maxLevel)
 	}
 
-	// write the player back to the map
-	ps.players[playerID] = player
+	// send request to the data service to write back the player
+	err = ps.writePlayerToDB(player)
+	if err != nil {
+		return nil, fmt.Errorf("DB write error: " + err.Error())
+	}
 
-	return &player, nil
+	return player, nil
 }
 
 // updateEnergy will update energy values of the given player:
