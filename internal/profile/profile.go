@@ -16,14 +16,6 @@ import (
 // Profile Specific Errors:
 var serverNilError = fmt.Errorf("provided profile server pointer is nil")
 
-type playerNotFoundErr struct {
-	playerID string
-}
-
-func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
-}
-
 // NewPlayerRequestBody just contains the player ID
 type NewPlayerRequestBody struct {
 	PlayerID string `json:"playerID"`
@@ -39,7 +31,6 @@ type PlayerData struct {
 }
 
 type Server struct {
-	players      map[string]PlayerData
 	playersMutex sync.Mutex
 
 	defaultLevel         int32
@@ -53,7 +44,6 @@ type Server struct {
 func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
 
 	ps := &Server{
-		players:      map[string]PlayerData{},
 		playersMutex: sync.Mutex{},
 
 		defaultLevel:         gc.DefaultLevel,
