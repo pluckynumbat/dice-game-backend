@@ -258,10 +258,10 @@ func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 	defer cancel()
 
 	// create the request
-	reqURL := fmt.Sprintf("http://:5050/data/player-internal/%v", playerID)
+	reqURL := fmt.Sprintf("http://:%v/data/player-internal/%v", constants.DataServerPort, playerID)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("request creation error:  %v \n", err.Error())
+		return nil, err
 	}
 
 	// send the request
@@ -306,7 +306,8 @@ func (ps *Server) writePlayerToDB(player *types.PlayerData) error {
 	}
 
 	// create the request
-	req, err := http.NewRequestWithContext(ctx, "POST", "http://:5050/data/player-internal", reqBody)
+	reqURL := fmt.Sprintf("http://:%v/data/player-internal", constants.DataServerPort)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
 		return err
 	}

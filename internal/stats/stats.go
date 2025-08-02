@@ -174,7 +174,7 @@ func (ss *Server) readStatsFromDB(playerID string) (*types.PlayerStats, error, i
 	defer cancel()
 
 	// create the request
-	reqURL := fmt.Sprintf("http://:5050/data/stats-internal/%v", playerID)
+	reqURL := fmt.Sprintf("http://:%v/data/stats-internal/%v", constants.DataServerPort, playerID)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err, invalidStatusCode
@@ -218,7 +218,8 @@ func (ss *Server) writeStatsToDB(plStatsWithID *types.PlayerStatsWithID) error {
 	}
 
 	// create the request
-	req, err := http.NewRequestWithContext(ctx, "POST", "http://:5050/data/stats-internal", reqBody)
+	reqURL := fmt.Sprintf("http://:%v/data/stats-internal", constants.DataServerPort)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
 		return err
 	}
