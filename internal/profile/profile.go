@@ -73,7 +73,7 @@ func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Se
 func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request) {
 
 	if ps == nil {
-		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request) {
 
 	if ps == nil {
-		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -244,4 +244,41 @@ func (ps *Server) updateEnergy(player *PlayerData, newEnergyDelta int32) error {
 	player.LastUpdateTime = now
 
 	return nil
+}
+
+// readPlayerFromDB makes an internal (server to server) request to the data service to read the required player
+func (ps *Server) readPlayerFromDB(playerID string) (*PlayerData, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:5050/data/player-internal/%v", playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation error: " + err.Error())
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request sending error: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("config request was not successful")
+	}
+
+	//decode the response for the player data
+	playerData := &PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding the player data: " + err.Error())
+	}
+
+	return playerData, nil
 }
