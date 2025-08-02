@@ -79,3 +79,53 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestServer_HandleWritePlayerDataRequest(t *testing.T) {
+
+	ds := NewDataServer()
+	ds.playersDB["player2"] = profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
+
+	tests := []struct {
+		name            string
+		server          *Server
+		requestPlayer   *profile.PlayerData
+		wantStatus      int
+		wantContentType string
+	}{
+		{"nil server", nil, nil, http.StatusInternalServerError, "text/plain"},
+		{"nil player", ds, nil, http.StatusBadRequest, "text/plain"},
+		{"valid player", ds, &profile.PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}, http.StatusOK, "text/plain"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			reqBody := test.requestPlayer
+			err2 := json.NewEncoder(buf).Encode(reqBody)
+			if err2 != nil {
+				t.Fatal("could not encode the request body: " + err2.Error())
+			}
+
+			newReq := httptest.NewRequest(http.MethodPost, "/data/player-internal", buf)
+			respRec := httptest.NewRecorder()
+
+			dataServer := test.server
+			dataServer.HandleWritePlayerDataRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+			}
+		})
+	}
+}
