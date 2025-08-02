@@ -29,9 +29,9 @@ func main() {
 
 	configServer := config.NewConfigServer(authServer)
 
-	profileServer := profile.NewProfileServer(authServer, configServer.GameConfig)
-	statsServer := stats.NewStatsServer(authServer, configServer.GameConfig)
-	gameplayServer := gameplay.NewGameplayServer(authServer, profileServer, statsServer, configServer.GameConfig)
+	profileServer := profile.NewProfileServer(authServer)
+	statsServer := stats.NewStatsServer(authServer)
+	gameplayServer := gameplay.NewGameplayServer(authServer, profileServer, statsServer)
 
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
 	mux.HandleFunc("DELETE /auth/logout", authServer.HandleLogoutRequest)

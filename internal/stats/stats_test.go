@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"example.com/dice-game-backend/internal/auth"
-	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/testsetup"
@@ -30,7 +29,7 @@ func TestMain(m *testing.M) {
 func TestNewStatsServer(t *testing.T) {
 
 	authServer := auth.NewAuthServer()
-	statsServer := NewStatsServer(authServer, config.NewConfigServer(authServer).GameConfig)
+	statsServer := NewStatsServer(authServer)
 
 	if statsServer == nil {
 		t.Fatal("new stats server should not return a nil server pointer")
@@ -42,7 +41,7 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 	var s1, s2 *Server
 
 	authServer := auth.NewAuthServer()
-	s2 = NewStatsServer(authServer, config.NewConfigServer(authServer).GameConfig)
+	s2 = NewStatsServer(authServer)
 
 	err := s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{nil}})
 	if err != nil {
@@ -110,7 +109,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	s2 = NewStatsServer(as, config.NewConfigServer(as).GameConfig)
+	s2 = NewStatsServer(as)
 
 	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{[]types.PlayerLevelStats{
 		{1, 2, 3, 1},

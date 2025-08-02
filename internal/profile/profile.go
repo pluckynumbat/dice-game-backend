@@ -39,22 +39,22 @@ type Server struct {
 }
 
 // NewProfileServer returns an initialized pointer to the profile server
-func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
+func NewProfileServer(rv validation.RequestValidator) *Server {
 
 	ps := &Server{
 		playersMutex: sync.Mutex{},
 
-		defaultLevel:         gc.DefaultLevel,
-		maxLevel:             int32(len(gc.Levels)),
-		maxEnergy:            gc.MaxEnergy,
+		defaultLevel:         config.Config.DefaultLevel,
+		maxLevel:             int32(len(config.Config.Levels)),
+		maxEnergy:            config.Config.MaxEnergy,
 		energyRegenPerSecond: 0,
 
 		requestValidator: rv,
 	}
 
 	// avoid divide by zero
-	if gc.EnergyRegenSeconds != 0 {
-		ps.energyRegenPerSecond = 1 / float64(gc.EnergyRegenSeconds)
+	if config.Config.EnergyRegenSeconds != 0 {
+		ps.energyRegenPerSecond = 1 / float64(config.Config.EnergyRegenSeconds)
 	}
 
 	return ps

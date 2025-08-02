@@ -18,11 +18,10 @@ import (
 func TestNewGameplayServer(t *testing.T) {
 
 	as := auth.NewAuthServer()
-	cs := config.NewConfigServer(as)
-	ps := profile.NewProfileServer(as, cs.GameConfig)
-	ss := stats.NewStatsServer(as, cs.GameConfig)
+	ps := profile.NewProfileServer(as)
+	ss := stats.NewStatsServer(as)
 
-	gs := NewGameplayServer(as, ps, ss, cs.GameConfig)
+	gs := NewGameplayServer(as, ps, ss)
 
 	if gs == nil {
 		t.Fatal("new profile server should not return a nil server pointer")
@@ -36,22 +35,20 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	cs := config.NewConfigServer(as)
-	ps := profile.NewProfileServer(as, cs.GameConfig)
+	ps := profile.NewProfileServer(as)
 
 	newPlayerData, err := setupTestProfile("player2", sID, ps)
 	if err != nil {
 		t.Fatal("profile setup error: " + err.Error())
 	}
-	energyCost := cs.GameConfig.Levels[0].EnergyCost
+	energyCost := config.Config.Levels[0].EnergyCost
 
-	ss := stats.NewStatsServer(as, cs.GameConfig)
+	ss := stats.NewStatsServer(as)
 
-	gs := NewGameplayServer(as, ps, ss, cs.GameConfig)
+	gs := NewGameplayServer(as, ps, ss)
 
-	invGS1 := NewGameplayServer(as, nil, ss, cs.GameConfig)
-	invGS2 := NewGameplayServer(as, ps, nil, cs.GameConfig)
-	invGS3 := NewGameplayServer(as, ps, ss, nil)
+	invGS1 := NewGameplayServer(as, nil, ss)
+	invGS2 := NewGameplayServer(as, ps, nil)
 
 	tests := []struct {
 		name             string
@@ -69,7 +66,6 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		{"invalid level", gs, sID, &EnterLevelRequestBody{"player2", 50}, http.StatusBadRequest, "application/json", nil},
 		{"nil dependency 1", invGS1, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
 		{"nil dependency 2", invGS2, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
-		{"nil dependency 3", invGS3, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
 		{"locked level", gs, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusOK, "application/json", &EnterLevelResponse{false, *newPlayerData}},
 		{name: "valid level", server: gs, sessionID: sID, requestBody: &EnterLevelRequestBody{"player2", 1}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &EnterLevelResponse{
 			AccessGranted: true,
@@ -131,23 +127,21 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	cs := config.NewConfigServer(as)
-	ps := profile.NewProfileServer(as, cs.GameConfig)
+	ps := profile.NewProfileServer(as)
 
 	newPlayer2, err := setupTestProfile("player2", sID, ps)
 	if err != nil {
 		t.Fatal("profile setup error: " + err.Error())
 	}
 
-	energyReward := cs.GameConfig.Levels[0].EnergyReward
+	energyReward := config.Config.Levels[0].EnergyReward
 
-	ss := stats.NewStatsServer(as, cs.GameConfig)
+	ss := stats.NewStatsServer(as)
 
-	gs := NewGameplayServer(as, ps, ss, cs.GameConfig)
+	gs := NewGameplayServer(as, ps, ss)
 
-	invGS1 := NewGameplayServer(as, nil, ss, cs.GameConfig)
-	invGS2 := NewGameplayServer(as, ps, nil, cs.GameConfig)
-	invGS3 := NewGameplayServer(as, ps, ss, nil)
+	invGS1 := NewGameplayServer(as, nil, ss)
+	invGS2 := NewGameplayServer(as, ps, nil)
 
 	tests := []struct {
 		name             string
@@ -163,7 +157,6 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
 		{"nil dependency 1", invGS1, sID, nil, http.StatusInternalServerError, "application/json", nil},
 		{"nil dependency 2", invGS2, sID, nil, http.StatusInternalServerError, "application/json", nil},
-		{"nil dependency 3", invGS3, sID, nil, http.StatusInternalServerError, "application/json", nil},
 		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusBadRequest, "application/json", nil},
 		{"invalid level", gs, sID, &LevelResultRequestBody{"player2", 50, nil}, http.StatusBadRequest, "application/json", nil},
 		{"locked level", gs, sID, &LevelResultRequestBody{"player2", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},

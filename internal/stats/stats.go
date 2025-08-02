@@ -39,11 +39,11 @@ type Server struct {
 }
 
 // NewStatsServer returns an initialized pointer to the stats server
-func NewStatsServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
+func NewStatsServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		statsMutex: sync.Mutex{},
 
-		defaultLevelCount: int32(len(gc.Levels)),
+		defaultLevelCount: int32(len(config.Config.Levels)),
 
 		requestValidator: rv,
 	}

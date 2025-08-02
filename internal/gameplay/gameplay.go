@@ -48,16 +48,13 @@ type Server struct {
 	profileServer *profile.Server
 	statsServer   *stats.Server
 
-	gameConfig       *config.GameConfig
 	requestValidator validation.RequestValidator
 }
 
-func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server, gc *config.GameConfig) *Server {
+func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server) *Server {
 	return &Server{
 		profileServer: ps,
 		statsServer:   ss,
-
-		gameConfig: gc,
 
 		requestValidator: rv,
 	}
@@ -95,7 +92,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.Level, entryRequest.PlayerID)
 
 	// get the config and the player data
-	cfg := gs.gameConfig
+	cfg := config.Config
 	if entryRequest.Level < 0 || entryRequest.Level > int32(len(cfg.Levels)) {
 		http.Error(w, "invalid level in request", http.StatusBadRequest)
 		return
@@ -171,7 +168,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	fmt.Printf("request for level results for level %v by player id %v \n ", request.Level, request.PlayerID)
 
 	// get the config and player, do basic validation there
-	cfg := gs.gameConfig
+	cfg := config.Config
 	player, err := gs.profileServer.GetPlayer(request.PlayerID)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
@@ -258,10 +255,6 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 }
 
 func (gs *Server) validateDependencies() error {
-
-	if gs.gameConfig == nil {
-		return fmt.Errorf("provided game config pointer is nil, please check construction")
-	}
 
 	if gs.profileServer == nil {
 		return fmt.Errorf("profile server pointer is nil, please check construction")

@@ -17,17 +17,19 @@ func TestNewConfigServer(t *testing.T) {
 	if configServer == nil {
 		t.Fatal("new config server should not return a nil server pointer")
 	}
+}
 
-	if configServer.GameConfig == nil {
-		t.Fatal("new config server should not contain a nil game config")
+func TestBasicConfigValidation(t *testing.T) {
+	if Config == nil {
+		t.Fatal("config should not contain a nil game config")
 	}
 
-	if configServer.GameConfig.Levels == nil {
-		t.Fatal("new config server should not contain a game config with nil levels")
+	if Config.Levels == nil {
+		t.Fatal("config should not contain a game config with nil levels")
 	}
 
-	if len(configServer.GameConfig.Levels) == 0 {
-		t.Fatal("new config server should not contain a game config with empty levels")
+	if len(Config.Levels) == 0 {
+		t.Fatal("config should not contain a game config with empty levels")
 	}
 }
 

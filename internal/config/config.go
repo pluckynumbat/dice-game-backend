@@ -3,8 +3,10 @@ package config
 
 import (
 	"encoding/json"
+	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -24,33 +26,36 @@ type GameConfig struct {
 	DefaultLevelScore  int32         `json:"defaultLevelScore"`
 }
 
+// Server is the core config service provider
 type Server struct {
-	GameConfig       *GameConfig
 	requestValidator validation.RequestValidator
 }
 
+// NewConfigServer returns an initialized pointer to the config server
 func NewConfigServer(rv validation.RequestValidator) *Server {
 	return &Server{
-		GameConfig: &GameConfig{
-			Levels: []LevelConfig{
-				{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
-				{Level: 2, EnergyCost: 3, TotalRolls: 3, Target: 4, EnergyReward: 5},
-				{Level: 3, EnergyCost: 4, TotalRolls: 4, Target: 2, EnergyReward: 6},
-				{Level: 4, EnergyCost: 4, TotalRolls: 3, Target: 1, EnergyReward: 6},
-				{Level: 5, EnergyCost: 4, TotalRolls: 2, Target: 5, EnergyReward: 6},
-				{Level: 6, EnergyCost: 5, TotalRolls: 4, Target: 3, EnergyReward: 7},
-				{Level: 7, EnergyCost: 5, TotalRolls: 3, Target: 4, EnergyReward: 7},
-				{Level: 8, EnergyCost: 5, TotalRolls: 2, Target: 1, EnergyReward: 7},
-				{Level: 9, EnergyCost: 6, TotalRolls: 4, Target: 2, EnergyReward: 8},
-				{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
-			},
-			DefaultLevel:       1,
-			MaxEnergy:          50,
-			EnergyRegenSeconds: 5,
-			DefaultLevelScore:  99,
-		},
 		requestValidator: rv,
 	}
+}
+
+// Config is the global config used across services, also provided to the client via the GetConfig() public API call
+var Config = &GameConfig{
+	Levels: []LevelConfig{
+		{Level: 1, EnergyCost: 3, TotalRolls: 2, Target: 6, EnergyReward: 5},
+		{Level: 2, EnergyCost: 3, TotalRolls: 3, Target: 4, EnergyReward: 5},
+		{Level: 3, EnergyCost: 4, TotalRolls: 4, Target: 2, EnergyReward: 6},
+		{Level: 4, EnergyCost: 4, TotalRolls: 3, Target: 1, EnergyReward: 6},
+		{Level: 5, EnergyCost: 4, TotalRolls: 2, Target: 5, EnergyReward: 6},
+		{Level: 6, EnergyCost: 5, TotalRolls: 4, Target: 3, EnergyReward: 7},
+		{Level: 7, EnergyCost: 5, TotalRolls: 3, Target: 4, EnergyReward: 7},
+		{Level: 8, EnergyCost: 5, TotalRolls: 2, Target: 1, EnergyReward: 7},
+		{Level: 9, EnergyCost: 6, TotalRolls: 4, Target: 2, EnergyReward: 8},
+		{Level: 10, EnergyCost: 6, TotalRolls: 3, Target: 6, EnergyReward: 8},
+	},
+	DefaultLevel:       1,
+	MaxEnergy:          50,
+	EnergyRegenSeconds: 5,
+	DefaultLevelScore:  99,
 }
 
 // HandleConfigRequest responds with a game config
@@ -72,7 +77,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	err = json.NewEncoder(w).Encode(cs.GameConfig)
+	err = json.NewEncoder(w).Encode(Config)
 	if err != nil {
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
