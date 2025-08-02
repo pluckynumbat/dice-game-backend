@@ -282,3 +282,39 @@ func (ps *Server) readPlayerFromDB(playerID string) (*PlayerData, error) {
 
 	return playerData, nil
 }
+
+// writePlayerToDB makes an internal (server to server) request to the data service to write the required player entry
+func (ps *Server) writePlayerToDB(player *PlayerData) error {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(player)
+	if err != nil {
+		return fmt.Errorf("could not encode player data")
+	}
+
+	// create the request
+	req, err := http.NewRequestWithContext(ctx, "POST", "http://:5050/data/player-internal", reqBody)
+	if err != nil {
+		return fmt.Errorf("request creation error: " + err.Error())
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request sending error: " + err.Error())
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("set player to db request was not successful")
+	}
+
+	return nil
+}
