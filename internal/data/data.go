@@ -92,6 +92,11 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	if decodedReq.PlayerID == "" {
+		http.Error(w, "cannot write an entry with a blank player id", http.StatusBadRequest)
+		return
+	}
+
 	fmt.Printf("writing player DB entry for id: %v \n ", decodedReq.PlayerID)
 
 	ds.playersMutex.Lock()
@@ -155,6 +160,11 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		return
+	}
+
+	if decodedReq.PlayerID == "" {
+		http.Error(w, "cannot write an entry with a blank player id", http.StatusBadRequest)
 		return
 	}
 
