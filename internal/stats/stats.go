@@ -1,4 +1,4 @@
-// Package stats: service which holds and provides details regarding relevant player stats
+// Package stats: service which provides details regarding relevant player stats
 package stats
 
 import (
@@ -48,7 +48,6 @@ type PlayerStatsWithID struct {
 }
 
 type Server struct {
-	allStats   map[string]PlayerStats // this is for all players (and all levels)
 	statsMutex sync.Mutex
 
 	defaultLevelCount int32
@@ -58,7 +57,6 @@ type Server struct {
 
 func NewStatsServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
 	return &Server{
-		allStats:   map[string]PlayerStats{},
 		statsMutex: sync.Mutex{},
 
 		defaultLevelCount: int32(len(gc.Levels)),
