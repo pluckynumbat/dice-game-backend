@@ -128,3 +128,38 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
 }
+
+// HandleWritePlayerStatsRequest writes the given player stats to a stats DB entry
+// (creating a new stats DB entry if not present)
+func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ds == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// decode the request body, which should be a PlayerStatsWithID struct
+	decodedReq := &stats.PlayerStatsWithID{}
+	err := json.NewDecoder(r.Body).Decode(decodedReq)
+	if err != nil {
+		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("writing stats DB entry for id: %v \n ", decodedReq.PlayerID)
+
+	ds.statsMutex.Lock()
+	defer ds.statsMutex.Unlock()
+
+	// write the entry to the database
+	ds.statsDB[decodedReq.PlayerID] = decodedReq.PlayerStats
+
+	// provide the success response, the body is meaningless
+	// (status of 200: operation will be considered a success)
+	w.Header().Set("Content-Type", "text/plain")
+	_, err = fmt.Fprint(w, "success")
+	if err != nil {
+		http.Error(w, "could not write response", http.StatusInternalServerError)
+		return
+	}
+}
