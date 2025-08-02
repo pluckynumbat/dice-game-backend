@@ -5,15 +5,28 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/auth"
 	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/testsetup"
 	"example.com/dice-game-backend/internal/types"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+
+	dataServer := data.NewDataServer()
+	go dataServer.RunDataServer(constants.DataServerPort)
+
+	code := m.Run()
+
+	os.Exit(code)
+}
 
 func TestNewGameplayServer(t *testing.T) {
 
@@ -129,7 +142,7 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 
 	ps := profile.NewProfileServer(as)
 
-	newPlayer2, err := setupTestProfile("player2", sID, ps)
+	newPlayer3, err := setupTestProfile("player3", sID, ps)
 	if err != nil {
 		t.Fatal("profile setup error: " + err.Error())
 	}
@@ -158,19 +171,19 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		{"nil dependency 1", invGS1, sID, nil, http.StatusInternalServerError, "application/json", nil},
 		{"nil dependency 2", invGS2, sID, nil, http.StatusInternalServerError, "application/json", nil},
 		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusBadRequest, "application/json", nil},
-		{"invalid level", gs, sID, &LevelResultRequestBody{"player2", 50, nil}, http.StatusBadRequest, "application/json", nil},
-		{"locked level", gs, sID, &LevelResultRequestBody{"player2", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
-		{"nil rolls", gs, sID, &LevelResultRequestBody{"player2", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
-		{"invalid rolls", gs, sID, &LevelResultRequestBody{"player2", 1, []int32{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+		{"invalid level", gs, sID, &LevelResultRequestBody{"player3", 50, nil}, http.StatusBadRequest, "application/json", nil},
+		{"locked level", gs, sID, &LevelResultRequestBody{"player3", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+		{"nil rolls", gs, sID, &LevelResultRequestBody{"player3", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
+		{"invalid rolls", gs, sID, &LevelResultRequestBody{"player3", 1, []int32{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
 
-		{name: "level loss", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player2", 1, []int32{1, 1}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
+		{name: "level loss", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player3", 1, []int32{1, 1}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
 			LevelResult: LevelResult{false, 0, false},
-			Player:      *newPlayer2,
+			Player:      *newPlayer3,
 			Stats:       types.PlayerStats{LevelStats: []types.PlayerLevelStats{{1, 0, 1, 99}}},
 		}},
-		{name: "level win", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player2", 1, []int32{1, 6}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
+		{name: "level win", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player3", 1, []int32{1, 6}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
 			LevelResult: LevelResult{true, energyReward, true},
-			Player:      types.PlayerData{PlayerID: newPlayer2.PlayerID, Level: newPlayer2.Level + 1, Energy: 50, LastUpdateTime: newPlayer2.LastUpdateTime},
+			Player:      types.PlayerData{PlayerID: newPlayer3.PlayerID, Level: newPlayer3.Level + 1, Energy: 50, LastUpdateTime: newPlayer3.LastUpdateTime},
 			Stats:       types.PlayerStats{LevelStats: []types.PlayerLevelStats{{1, 1, 1, 2}}},
 		}},
 	}
