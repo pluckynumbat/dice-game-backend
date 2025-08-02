@@ -45,8 +45,8 @@ func (ds *Server) RunDataServer() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /data/player-internal", ds.HandleSetPlayerRequest)
-	mux.HandleFunc("GET /data/player-internal/{id}", ds.HandleGetPlayerRequest)
+	mux.HandleFunc("POST /data/player-internal", ds.HandleWritePlayerDataRequest)
+	mux.HandleFunc("GET /data/player-internal/{id}", ds.HandleReadPlayerDataRequest)
 
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
