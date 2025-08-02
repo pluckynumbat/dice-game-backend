@@ -4,16 +4,13 @@ package data
 
 import (
 	"encoding/json"
-	"example.com/dice-game-backend/internal/profile"
-	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/types"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 )
-
-const serverHost string = ""
-const serverPort string = "5050"
 
 // Data service Specific Errors:
 var serverNilError = fmt.Errorf("provided data server pointer is nil")
@@ -35,20 +32,20 @@ func (err playerStatsNotFoundErr) Error() string {
 }
 
 type Server struct {
-	playersDB    map[string]profile.PlayerData
+	playersDB    map[string]types.PlayerData
 	playersMutex sync.Mutex
 
-	statsDB    map[string]stats.PlayerStats
+	statsDB    map[string]types.PlayerStats
 	statsMutex sync.Mutex
 }
 
 func NewDataServer() *Server {
 
 	ds := &Server{
-		playersDB:    map[string]profile.PlayerData{},
+		playersDB:    map[string]types.PlayerData{},
 		playersMutex: sync.Mutex{},
 
-		statsDB:    map[string]stats.PlayerStats{},
+		statsDB:    map[string]types.PlayerStats{},
 		statsMutex: sync.Mutex{},
 	}
 
@@ -56,7 +53,7 @@ func NewDataServer() *Server {
 }
 
 // RunDataServer runs a given data server on the designated port
-func (ds *Server) RunDataServer() {
+func (ds *Server) RunDataServer(port string) {
 
 	if ds == nil {
 		fmt.Println(serverNilError)
@@ -71,7 +68,7 @@ func (ds *Server) RunDataServer() {
 	mux.HandleFunc("POST /data/stats-internal", ds.HandleWritePlayerStatsRequest)
 	mux.HandleFunc("GET /data/stats-internal/{id}", ds.HandleReadPlayerStatsRequest)
 
-	addr := serverHost + ":" + serverPort
+	addr := constants.CommonHost + ":" + port
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
@@ -85,7 +82,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	// decode the request body, which should be a PlayerData struct
-	decodedReq := &profile.PlayerData{}
+	decodedReq := &types.PlayerData{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body", http.StatusBadRequest)
@@ -156,7 +153,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	}
 
 	// decode the request body, which should be a PlayerStatsWithID struct
-	decodedReq := &stats.PlayerStatsWithID{}
+	decodedReq := &types.PlayerStatsWithID{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body", http.StatusBadRequest)
