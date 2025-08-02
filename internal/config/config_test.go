@@ -1,9 +1,9 @@
 package config
 
 import (
-	"bytes"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/auth"
+	"example.com/dice-game-backend/internal/testsetup"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -35,20 +35,10 @@ func TestHandleConfigRequest(t *testing.T) {
 
 	var cs1, cs2 *Server
 
-	buf := &bytes.Buffer{}
-	reqBody := &auth.LoginRequestBody{IsNewUser: true, ServerVersion: "0"}
-	err := json.NewEncoder(buf).Encode(reqBody)
+	as, sID, err := testsetup.SetupTestAuth()
 	if err != nil {
-		t.Fatal("could not encode the request body: " + err.Error())
+		t.Fatal("auth setup error: " + err.Error())
 	}
-
-	newAuthReq := httptest.NewRequest(http.MethodPost, "/auth/login", buf)
-	newAuthReq.SetBasicAuth("testuser4", "pass4")
-	authRespRec := httptest.NewRecorder()
-
-	as := auth.NewAuthServer()
-	as.HandleLoginRequest(authRespRec, newAuthReq)
-	sID := authRespRec.Header().Get("Session-Id")
 
 	cs2 = NewConfigServer(as)
 

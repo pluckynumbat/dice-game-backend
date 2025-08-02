@@ -7,6 +7,7 @@ import (
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -20,8 +21,8 @@ type EnterLevelRequestBody struct {
 }
 
 type EnterLevelResponse struct {
-	AccessGranted bool               `json:"accessGranted"`
-	Player        profile.PlayerData `json:"playerData"`
+	AccessGranted bool             `json:"accessGranted"`
+	Player        types.PlayerData `json:"playerData"`
 }
 
 type LevelResultRequestBody struct {
@@ -30,10 +31,17 @@ type LevelResultRequestBody struct {
 	Rolls    []int32 `json:"rolls"`
 }
 
+// LevelResult only contains level result details, and is sent as part of the level result response
+type LevelResult struct {
+	Won              bool  `json:"won"`
+	EnergyReward     int32 `json:"energyReward"`
+	UnlockedNewLevel bool  `json:"unlockedNewLevel"`
+}
+
 type LevelResultResponse struct {
-	LevelWon bool               `json:"levelWon"`
-	Player   profile.PlayerData `json:"playerData"`
-	Stats    stats.PlayerStats  `json:"statsData"`
+	LevelResult LevelResult       `json:"levelResult"`
+	Player      types.PlayerData  `json:"playerData"`
+	Stats       types.PlayerStats `json:"statsData"`
 }
 
 type Server struct {
@@ -64,17 +72,13 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if gs.gameConfig == nil {
-		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+	err := gs.validateDependencies()
+	if err != nil {
+		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if gs.profileServer == nil || gs.statsServer == nil {
-		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
-		return
-	}
-
-	err := gs.requestValidator.ValidateRequest(r)
+	err = gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -144,17 +148,13 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if gs.gameConfig == nil {
-		http.Error(w, "provided game config pointer is nil, please check construction", http.StatusInternalServerError)
+	err := gs.validateDependencies()
+	if err != nil {
+		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if gs.profileServer == nil || gs.statsServer == nil {
-		http.Error(w, "profile server / stats server pointer is nil, please check construction", http.StatusInternalServerError)
-		return
-	}
-
-	err := gs.requestValidator.ValidateRequest(r)
+	err = gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -207,6 +207,14 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		newPlayerLevel += 1
 	}
 
+	// create a new level result to send in the response
+	levelResult := &LevelResult{
+		Won:              won,
+		EnergyReward:     energyDelta,
+		UnlockedNewLevel: newLevelUnlocked,
+	}
+
+	// update the player data to send back in the response
 	updatedPlayer, err := gs.profileServer.UpdatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
@@ -214,7 +222,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// update stats entry for this level (update win count, loss count, best score if better)
-	newStatsDelta := &stats.PlayerLevelStats{
+	newStatsDelta := &types.PlayerLevelStats{
 		Level:     request.Level,
 		WinCount:  0,
 		LossCount: 0,
@@ -236,9 +244,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 
 	// create the response
 	response := &LevelResultResponse{
-		LevelWon: won,
-		Player:   *updatedPlayer,
-		Stats:    *updatedStats,
+		LevelResult: *levelResult,
+		Player:      *updatedPlayer,
+		Stats:       *updatedStats,
 	}
 
 	// send the response back
@@ -247,4 +255,21 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, "could not encode the response", http.StatusInternalServerError)
 	}
+}
+
+func (gs *Server) validateDependencies() error {
+
+	if gs.gameConfig == nil {
+		return fmt.Errorf("provided game config pointer is nil, please check construction")
+	}
+
+	if gs.profileServer == nil {
+		return fmt.Errorf("profile server pointer is nil, please check construction")
+	}
+
+	if gs.statsServer == nil {
+		return fmt.Errorf("stats server pointer is nil, please check construction")
+	}
+
+	return nil
 }

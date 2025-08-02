@@ -9,10 +9,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
 
 const serverHost string = ""
 const serverPort string = "8080"
+
+// session sweeper related constants
+const sessionSweepPeriod time.Duration = 6 * time.Hour
+const sessionExpirySeconds int64 = 24 * 60 * 60 // 1 day
 
 func main() {
 	fmt.Println("starting the server...")
@@ -20,6 +25,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	authServer := auth.NewAuthServer()
+	authServer.StartPeriodicSessionSweep(sessionSweepPeriod, sessionExpirySeconds)
+
 	configServer := config.NewConfigServer(authServer)
 
 	profileServer := profile.NewProfileServer(authServer, configServer.GameConfig)
@@ -27,7 +34,7 @@ func main() {
 	gameplayServer := gameplay.NewGameplayServer(authServer, profileServer, statsServer, configServer.GameConfig)
 
 	mux.HandleFunc("POST /auth/login", authServer.HandleLoginRequest)
-	mux.HandleFunc("GET /auth/logout", authServer.HandleLogoutRequest)
+	mux.HandleFunc("DELETE /auth/logout", authServer.HandleLogoutRequest)
 
 	mux.HandleFunc("GET /config/game-config", configServer.HandleConfigRequest)
 

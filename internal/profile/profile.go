@@ -2,8 +2,12 @@
 package profile
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -11,31 +15,37 @@ import (
 	"time"
 )
 
-type PlayerData struct {
-	PlayerID       string `json:"playerID"`
-	Level          int32  `json:"level"`
-	Energy         int32  `json:"energy"`
-	LastUpdateTime int64  `json:"lastUpdateTime"`
+// Profile Specific Errors:
+var serverNilError = fmt.Errorf("provided profile server pointer is nil")
+
+type playerNotFoundErr struct {
+	playerID string
 }
 
+func (err playerNotFoundErr) Error() string {
+	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
+}
+
+// Server is the core profile service provider
 type Server struct {
-	players      map[string]PlayerData
 	playersMutex sync.Mutex
 
 	defaultLevel         int32
+	maxLevel             int32
 	maxEnergy            int32
 	energyRegenPerSecond float64
 
 	requestValidator validation.RequestValidator
 }
 
+// NewProfileServer returns an initialized pointer to the profile server
 func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Server {
 
 	ps := &Server{
-		players:      map[string]PlayerData{},
 		playersMutex: sync.Mutex{},
 
 		defaultLevel:         gc.DefaultLevel,
+		maxLevel:             int32(len(gc.Levels)),
 		maxEnergy:            gc.MaxEnergy,
 		energyRegenPerSecond: 0,
 
@@ -54,7 +64,7 @@ func NewProfileServer(rv validation.RequestValidator, gc *config.GameConfig) *Se
 func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request) {
 
 	if ps == nil {
-		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -65,35 +75,45 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	newPlayer := &PlayerData{
-		PlayerID:       "",
-		Level:          ps.defaultLevel,
-		Energy:         ps.maxEnergy,
-		LastUpdateTime: time.Now().UTC().Unix(),
-	}
-
-	err = json.NewDecoder(r.Body).Decode(newPlayer)
+	// decode the request body for the player ID
+	decodedReq := &types.NewPlayerRequestBody{}
+	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode player id", http.StatusInternalServerError)
 		return
 	}
 
+	// create the new player struct from the player ID
+	newPlayer := &types.PlayerData{
+		PlayerID:       decodedReq.PlayerID,
+		Level:          ps.defaultLevel,
+		Energy:         ps.maxEnergy,
+		LastUpdateTime: time.Now().UTC().Unix(),
+	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	_, exists := ps.players[newPlayer.PlayerID]
-	if exists {
+	// check with the data service to see if the player exists already (they should not)
+	// so successful get here means failure for us!
+	_, err = ps.readPlayerFromDB(decodedReq.PlayerID)
+	if err == nil {
 		http.Error(w, "player exists already", http.StatusBadRequest)
 		return
 	}
 
 	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
 
-	ps.players[newPlayer.PlayerID] = *newPlayer
+	// tell the data service to store the new player in the player DB
+	err = ps.writePlayerToDB(newPlayer)
+	if err != nil {
+		http.Error(w, "DB write error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
-	err = json.NewEncoder(w).Encode(ps.players[newPlayer.PlayerID])
+	err = json.NewEncoder(w).Encode(newPlayer)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
 	}
@@ -103,7 +123,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request) {
 
 	if ps == nil {
-		http.Error(w, "provided profile server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -114,31 +134,18 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// get the id from the request uri
 	id := r.PathValue("id")
-
 	fmt.Printf("player data requested for id: %v \n ", id)
 
-	ps.playersMutex.Lock()
-	defer ps.playersMutex.Unlock()
-
-	player, ok := ps.players[id]
-	if !ok {
-		http.Error(w, "player not found", http.StatusBadRequest)
-		return
-	}
-
-	// passive energy regeneration
-	err = ps.updateEnergy(&player, 0)
+	player, err := ps.GetPlayer(id)
 	if err != nil {
-		http.Error(w, "energy error: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// write back to the map
-	ps.players[id] = player
-
+	// send the response back
 	w.Header().Set("Content-Type", "application/json")
-
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
 		http.Error(w, "could not encode player data", http.StatusInternalServerError)
@@ -146,67 +153,77 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 }
 
 // GetPlayer returns the player data when requested, with updated energy from the passive regeneration
-func (ps *Server) GetPlayer(playerID string) (*PlayerData, error) {
+func (ps *Server) GetPlayer(playerID string) (*types.PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	player, ok := ps.players[playerID]
-	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
-	}
-
-	// passive energy regeneration
-	err := ps.updateEnergy(&player, 0)
+	// send request to the data service to look the player up
+	player, err := ps.readPlayerFromDB(playerID)
 	if err != nil {
 		return nil, err
 	}
 
-	// write back to the map
-	ps.players[playerID] = player
+	// passive energy regeneration
+	err = ps.updateEnergy(player, 0)
+	if err != nil {
+		return nil, err
+	}
 
-	return &player, nil
+	// send request to the data service to write the player back to the DB
+	err = ps.writePlayerToDB(player)
+	if err != nil {
+		return nil, err
+	}
+
+	return player, nil
 }
 
 // UpdatePlayerData will first apply passive energy regeneration to the player,
 // then apply the given energy delta, and finally change the level of the player if needed
-func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*PlayerData, error) {
+func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*types.PlayerData, error) {
 
 	if ps == nil {
-		return nil, fmt.Errorf("provided profile server pointer is nil")
+		return nil, serverNilError
 	}
+
 	ps.playersMutex.Lock()
 	defer ps.playersMutex.Unlock()
 
-	player, ok := ps.players[playerID]
-	if !ok {
-		return nil, fmt.Errorf("player with id: %v was not found \n", playerID)
+	// send request to the data service to look the player up
+	player, err := ps.readPlayerFromDB(playerID)
+	if err != nil {
+		return nil, err
 	}
 
 	// update energy based on passive energy regeneration & new energyDelta
-	err := ps.updateEnergy(&player, energyDelta)
+	err = ps.updateEnergy(player, energyDelta)
 	if err != nil {
 		return nil, err
 	}
 
 	// update level (if needed)
-	if player.Level != newLevel {
-		player.Level = newLevel
+	if player.Level < newLevel {
+		player.Level = min(newLevel, ps.maxLevel)
 	}
 
-	// write the player back to the map
-	ps.players[playerID] = player
+	// send request to the data service to write back the player
+	err = ps.writePlayerToDB(player)
+	if err != nil {
+		return nil, err
+	}
 
-	return &player, nil
+	return player, nil
 }
 
 // updateEnergy will update energy values of the given player:
 // first it will update (possibly stale) energy based on passive energy regeneration
 // then it will update it based on the provided energy delta
-func (ps *Server) updateEnergy(player *PlayerData, newEnergyDelta int32) error {
+func (ps *Server) updateEnergy(player *types.PlayerData, newEnergyDelta int32) error {
 
 	if player == nil {
 		return fmt.Errorf("nil player data pointer")
@@ -229,6 +246,84 @@ func (ps *Server) updateEnergy(player *PlayerData, newEnergyDelta int32) error {
 
 	// 3. make the timestamp current
 	player.LastUpdateTime = now
+
+	return nil
+}
+
+// readPlayerFromDB makes an internal (server to server) request to the data service to read the required player
+func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/data/player-internal/%v", constants.DataServerPort, playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusBadRequest {
+			return nil, playerNotFoundErr{playerID}
+		} else {
+			return nil, fmt.Errorf("internal read player request was not successful, status code %v", resp.StatusCode)
+		}
+	}
+
+	//decode the response for the player data
+	playerData := &types.PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, err
+	}
+
+	return playerData, nil
+}
+
+// writePlayerToDB makes an internal (server to server) request to the data service to write the required player entry
+func (ps *Server) writePlayerToDB(player *types.PlayerData) error {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(player)
+	if err != nil {
+		return err
+	}
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/data/player-internal", constants.DataServerPort)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
+	if err != nil {
+		return err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("internal write player request was not successful, status code %v", resp.StatusCode)
+	}
 
 	return nil
 }
