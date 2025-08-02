@@ -28,7 +28,6 @@ type GameConfig struct {
 
 // Server is the core config service provider
 type Server struct {
-	GameConfig       *GameConfig
 	requestValidator validation.RequestValidator
 }
 
