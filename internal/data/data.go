@@ -14,6 +14,17 @@ import (
 const serverHost string = ""
 const serverPort string = "5050"
 
+// Data service Specific Errors:
+var serverNilError = fmt.Errorf("provided data server pointer is nil")
+
+type playerNotFoundErr struct {
+	playerID string
+}
+
+func (err playerNotFoundErr) Error() string {
+	return fmt.Sprintf("player with id: %v was not found in the DB \n", err.playerID)
+}
+
 type Server struct {
 	playersDB    map[string]profile.PlayerData
 	playersMutex sync.Mutex
