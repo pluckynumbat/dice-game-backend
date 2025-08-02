@@ -80,7 +80,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fmt.Printf("setting player DB entry for id: %v \n ", id)
+	fmt.Printf("setting player DB entry for id: %v \n ", decodedReq.PlayerID)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
