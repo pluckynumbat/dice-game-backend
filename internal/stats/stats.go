@@ -40,7 +40,9 @@ type PlayerStats struct {
 	LevelStats []PlayerLevelStats `json:"levelStats"`
 }
 
-type PlayerStatsResponse struct {
+// PlayerStatsWithID is used as the client response for the public get stats api
+// and as the request body for the internal request to the data service to write stats to the DB
+type PlayerStatsWithID struct {
 	PlayerID    string      `json:"playerID"`
 	PlayerStats PlayerStats `json:"playerStats"`
 }
@@ -132,14 +134,23 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 	// level to look for
 	levelIndex := newStatsDelta.Level - 1
 
-	// get the required player
-	playerStats, present := ss.allStats[playerID]
+	// make a request to the data service to read the stats entry for the player
+	present := true // to store if there is an entry for the required player id in the stats DB
+	playerStats, err, statusCode := ss.readStatsFromDB(playerID)
+	if err != nil {
+		if statusCode == int32(http.StatusBadRequest) {
+			// entry does not exist yet, this can still be a valid case (dealt with below) if the player has no stats yet
+			present = false
+		} else {
+			return nil, fmt.Errorf("DB read error: " + err.Error())
+		}
+	}
 
 	if !present {
 		if levelIndex == 0 {
 			// if this is for the first level, this could be the first ever stat entry for that player,
 			// in that case create an empty player stats struct, and an empty level stats slice in it
-			playerStats = PlayerStats{
+			playerStats = &PlayerStats{
 				LevelStats: make([]PlayerLevelStats, 0, ss.defaultLevelCount),
 			}
 		} else {
@@ -163,10 +174,14 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *Playe
 		playerStats.LevelStats = append(playerStats.LevelStats, *newStatsDelta)
 	}
 
-	// write the updated data back to the stats map
-	ss.allStats[playerID] = playerStats
+	// make a request to the data service to write the stats entry for the player
+	plStatsWithID := &PlayerStatsWithID{playerID, *playerStats}
+	err = ss.writeStatsToDB(plStatsWithID)
+	if err != nil {
+		return nil, fmt.Errorf("DB write error: " + err.Error())
+	}
 
-	return &playerStats, nil
+	return playerStats, nil
 }
 
 // readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
