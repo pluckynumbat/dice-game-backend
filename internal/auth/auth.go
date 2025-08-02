@@ -8,12 +8,17 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/constants"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// session sweeper related constants
+const sessionSweepPeriod time.Duration = 6 * time.Hour
+const sessionExpirySeconds int64 = 24 * 60 * 60 // 1 day
 
 // Auth Specific Errors:
 var serverNilError = fmt.Errorf("provided auth server pointer is nil")
@@ -62,6 +67,26 @@ func NewAuthServer() *Server {
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	}
+}
+
+// RunAuthServer runs a given auth server on the given port
+func (as *Server) RunAuthServer(port string) {
+
+	if as == nil {
+		fmt.Println(serverNilError)
+	}
+
+	as.StartPeriodicSessionSweep(sessionSweepPeriod, sessionExpirySeconds)
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /auth/login", as.HandleLoginRequest)
+	mux.HandleFunc("DELETE /auth/logout", as.HandleLogoutRequest)
+
+	mux.HandleFunc("POST /auth/validation-internal", as.HandleValidateRequest)
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleLoginRequest responds with a player id if successful
