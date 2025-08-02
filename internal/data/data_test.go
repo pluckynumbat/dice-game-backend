@@ -1,8 +1,10 @@
 package data
 
 import (
+	"bytes"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -191,6 +193,62 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 
 				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
+func TestServer_HandleWritePlayerStatsRequest(t *testing.T) {
+
+	ds := NewDataServer()
+	ds.statsDB["player2"] = stats.PlayerStats{
+		LevelStats: []stats.PlayerLevelStats{
+			{1, 2, 3, 1},
+			{2, 1, 4, 2},
+			{3, 0, 1, 99},
+		},
+	}
+	tests := []struct {
+		name            string
+		server          *Server
+		requestStats    *stats.PlayerStatsWithID
+		wantStatus      int
+		wantContentType string
+	}{
+		{"nil server", nil, nil, http.StatusInternalServerError, "text/plain"},
+		{"nil player", ds, nil, http.StatusBadRequest, "text/plain"},
+		{"new player", ds, &stats.PlayerStatsWithID{PlayerID: "player1", PlayerStats: stats.PlayerStats{}}, http.StatusOK, "text/plain"},
+		{"existing player", ds, &stats.PlayerStatsWithID{PlayerID: "player2", PlayerStats: stats.PlayerStats{LevelStats: []stats.PlayerLevelStats{{1, 2, 3, 1}, {2, 1, 4, 2}, {3, 1, 1, 2}, {4, 0, 1, 99}}}}, http.StatusOK, "text/plain"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			reqBody := test.requestStats
+			err2 := json.NewEncoder(buf).Encode(reqBody)
+			if err2 != nil {
+				t.Fatal("could not encode the request body: " + err2.Error())
+			}
+
+			newReq := httptest.NewRequest(http.MethodPost, "/data/player-internal", buf)
+			respRec := httptest.NewRecorder()
+
+			dataServer := test.server
+			dataServer.HandleWritePlayerStatsRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 			}
 		})
