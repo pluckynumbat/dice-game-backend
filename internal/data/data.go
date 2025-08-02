@@ -51,3 +51,38 @@ func (ds *Server) RunDataServer() {
 	addr := serverHost + ":" + serverPort
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
+
+// HandleWritePlayerDataRequest writes the given player data to a player DB entry
+// (creating a new player DB entry if not present)
+func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ds == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// decode the request body, which should be a PlayerData struct
+	decodedReq := &profile.PlayerData{}
+	err := json.NewDecoder(r.Body).Decode(decodedReq)
+	if err != nil {
+		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("setting player DB entry for id: %v \n ", id)
+
+	ds.playersMutex.Lock()
+	defer ds.playersMutex.Unlock()
+
+	// write the entry to the database
+	ds.playersDB[decodedReq.PlayerID] = *decodedReq
+
+	// provide the success response, the body is meaningless
+	// (status of 200: operation will be considered a success)
+	w.Header().Set("Content-Type", "text/plain")
+	_, err = fmt.Fprint(w, "success")
+	if err != nil {
+		http.Error(w, "could not write response", http.StatusInternalServerError)
+		return
+	}
+}
