@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"example.com/dice-game-backend/internal/constants"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -35,6 +36,7 @@ type SessionData struct {
 	LastActionTime int64
 }
 
+// Server is the core auth service provider
 type Server struct {
 	credentials map[string]string
 
@@ -49,6 +51,7 @@ type Server struct {
 	serverVersion string
 }
 
+// NewAuthServer returns an initialized pointer to the auth server
 func NewAuthServer() *Server {
 	return &Server{
 		credentials:     map[string]string{},
@@ -278,6 +281,29 @@ func (as *Server) ValidateRequest(req *http.Request) error {
 	}
 
 	return nil
+}
+
+// HandleValidateRequest is a wrapper around the above method, used when the server is fielding
+// internal requests for session validation from other servers
+func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) {
+
+	if as == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err := as.ValidateRequest(r)
+	if err != nil {
+		http.Error(w, serverNilError.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	// provide the success response, if the status is 200, validation will be considered to be successful
+	_, err = fmt.Fprint(w, "success")
+	if err != nil {
+		http.Error(w, "could not write response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // deleteSession deletes the session from the session map, and the player ID entry from the active player ID map
