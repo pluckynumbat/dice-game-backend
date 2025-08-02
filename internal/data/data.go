@@ -163,3 +163,34 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 		return
 	}
 }
+
+// HandleReadPlayerStatsRequest returns the stats DB entry of the requested player ID (if present)
+func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ds == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// get the id from the path value of the request
+	id := r.PathValue("id")
+	fmt.Printf("stats DB entry requested for id: %v \n ", id)
+
+	ds.statsMutex.Lock()
+	defer ds.statsMutex.Unlock()
+
+	// fetch the entry (if present) from the database
+	plStats, ok := ds.statsDB[id]
+	if !ok {
+		notFoundErr := playerStatsNotFoundErr{id}
+		http.Error(w, notFoundErr.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//write the response with the player entry in it and set it back
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(plStats)
+	if err != nil {
+		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+	}
+}
