@@ -97,10 +97,10 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	entryRequest := &EnterLevelRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(entryRequest)
 	if err != nil {
-		http.Error(w, "could not decode the entry request", http.StatusBadRequest)
+		http.Error(w, "could not decode the entry request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.Level, entryRequest.PlayerID)
+	gs.logger.Printf("request to enter level %v by player id %v", entryRequest.Level, entryRequest.PlayerID)
 
 	// get the config and the player data
 	cfg := config.Config
@@ -145,7 +145,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(entryResponse)
 	if err != nil {
-		http.Error(w, "could not encode the response", http.StatusInternalServerError)
+		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -169,10 +169,10 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	request := &LevelResultRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(request)
 	if err != nil {
-		http.Error(w, "could not decode the level result request", http.StatusBadRequest)
+		http.Error(w, "could not decode the level result request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request for level results for level %v by player id %v \n ", request.Level, request.PlayerID)
+	gs.logger.Printf("request for level results for level %v by player id %v", request.Level, request.PlayerID)
 
 	// get the config and player, do basic validation there
 	cfg := config.Config
@@ -261,7 +261,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		http.Error(w, "could not encode the response", http.StatusInternalServerError)
+		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
