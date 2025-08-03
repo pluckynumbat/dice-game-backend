@@ -1,9 +1,9 @@
-// Used to spin up a profile server as an independent microservice on the given port
+// Used to spin up a stats server as an independent microservice on the given port
 package main
 
 import (
 	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -20,7 +20,7 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 }
 
 func main() {
-	fmt.Println("starting the profile server...")
-	profileServer := profile.NewProfileServer(&requestValidator{})
-	profileServer.Run(constants.ProfileServerPort)
+	fmt.Println("starting the stats server...")
+	statsServer := stats.NewStatsServer(&requestValidator{})
+	statsServer.Run(constants.StatsServerPort)
 }

@@ -43,3 +43,10 @@ type PlayerStatsWithID struct {
 	PlayerID    string      `json:"playerID"`
 	PlayerStats PlayerStats `json:"playerStats"`
 }
+
+// PlayerIDLevelStats is used as a request body for the internal request to
+// update players stats and return them
+type PlayerIDLevelStats struct {
+	PlayerID        string           `json:"playerID"`
+	LevelStatsDelta PlayerLevelStats `json:"levelStatsDelta"`
+}
