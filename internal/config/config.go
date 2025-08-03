@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 type LevelConfig struct {
@@ -58,6 +59,21 @@ var Config = &GameConfig{
 	MaxEnergy:          50,
 	EnergyRegenSeconds: 5,
 	DefaultLevelScore:  99,
+}
+
+// Run runs a given config server on the given port
+func (cs *Server) Run(port string) {
+
+	if cs == nil {
+		fmt.Println("the given config server pointer is nil")
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /config/game-config", cs.HandleConfigRequest)
+
+	cs.logger.Println("the config server is up and running...")
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleConfigRequest responds with a game config
