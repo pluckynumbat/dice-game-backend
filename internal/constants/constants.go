@@ -9,3 +9,5 @@ const ConfigServerPort = "30303"
 const ProfileServerPort = "40404"
 const StatsServerPort = "50505"
 const GameplayServerPort = "60606"
+
+const InternalRequestDeadlineSeconds = 2

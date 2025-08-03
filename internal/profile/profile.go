@@ -99,7 +99,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	decodedReq := &types.NewPlayerRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode player id", http.StatusInternalServerError)
+		http.Error(w, "could not decode player id: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fmt.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
+	ps.logger.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
 
 	// tell the data service to store the new player in the player DB
 	err = ps.writePlayerToDB(newPlayer)
@@ -135,7 +135,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(newPlayer)
 	if err != nil {
-		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -156,7 +156,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	// get the id from the request uri
 	id := r.PathValue("id")
-	fmt.Printf("player data requested for id: %v \n ", id)
+	ps.logger.Printf("player data requested for id: %v \n ", id)
 
 	player, err := ps.GetPlayer(id)
 	if err != nil {
@@ -168,7 +168,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
-		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -253,11 +253,11 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	decodedReq := &types.PlayerIDLevelEnergy{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	fmt.Printf("update player data request for id: %v \n ", decodedReq.PlayerID)
+	ps.logger.Printf("update player data request for id: %v \n ", decodedReq.PlayerID)
 
 	// try to update the player data
 	updatedPlayer, err := ps.UpdatePlayerData(decodedReq.PlayerID, decodedReq.EnergyDelta, decodedReq.Level)
@@ -270,7 +270,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(updatedPlayer)
 	if err != nil {
-		http.Error(w, "could not encode updated player data", http.StatusInternalServerError)
+		http.Error(w, "could not encode updated player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -308,7 +308,7 @@ func (ps *Server) updateEnergy(player *types.PlayerData, newEnergyDelta int32) e
 func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 
 	// create a new context
-	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
 	defer cancel()
 
 	// create the request
@@ -331,7 +331,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 		if resp.StatusCode == http.StatusBadRequest {
 			return nil, playerNotFoundErr{playerID}
 		} else {
-			return nil, fmt.Errorf("internal read player request was not successful, status code %v", resp.StatusCode)
+			return nil, fmt.Errorf("internal read player request was not successful, status code %v \n", resp.StatusCode)
 		}
 	}
 
@@ -349,7 +349,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 func (ps *Server) writePlayerToDB(player *types.PlayerData) error {
 
 	// create a new context
-	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
 	defer cancel()
 
 	// create the request body
@@ -376,7 +376,7 @@ func (ps *Server) writePlayerToDB(player *types.PlayerData) error {
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("internal write player request was not successful, status code %v", resp.StatusCode)
+		return fmt.Errorf("internal write player request was not successful, status code %v \n", resp.StatusCode)
 	}
 
 	return nil
