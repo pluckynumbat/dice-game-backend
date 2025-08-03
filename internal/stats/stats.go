@@ -195,8 +195,8 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// decode the request body, which should be a PlayerIDWithDeltaLevelStats struct
-	decodedReq := &types.PlayerIDWithDeltaLevelStats{}
+	// decode the request body, which should be a PlayerIDLevelStats struct
+	decodedReq := &types.PlayerIDLevelStats{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
@@ -206,7 +206,7 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 	ss.logger.Printf("update and return stats request for id: %v", decodedReq.PlayerID)
 
 	// try to update the stats
-	updatedStats, err := ss.ReturnUpdatedPlayerStats(decodedReq.PlayerID, &decodedReq.DeltaLevelStats)
+	updatedStats, err := ss.ReturnUpdatedPlayerStats(decodedReq.PlayerID, &decodedReq.LevelStatsDelta)
 	if err != nil {
 		http.Error(w, "could not update player stats: "+err.Error(), http.StatusBadRequest)
 		return
