@@ -3,17 +3,22 @@
 package gameplay
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
-	"example.com/dice-game-backend/internal/profile"
-	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"time"
 )
 
-const defaultLevelScore = 99 // has not won yet
+// Stats Specific Errors:
+var serverNilError = fmt.Errorf("provided gameplay server pointer is nil")
 
 type EnterLevelRequestBody struct {
 	PlayerID string `json:"playerID"`
@@ -44,20 +49,32 @@ type LevelResultResponse struct {
 	Stats       types.PlayerStats `json:"statsData"`
 }
 
+// Server is the core gameplay service provider
 type Server struct {
-	profileServer *profile.Server
-	statsServer   *stats.Server
-
 	requestValidator validation.RequestValidator
+	logger           *log.Logger
 }
 
-func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server) *Server {
+// NewGameplayServer returns an initialized pointer to the gameplay server
+func NewGameplayServer(rv validation.RequestValidator) *Server {
 	return &Server{
-		profileServer: ps,
-		statsServer:   ss,
-
 		requestValidator: rv,
+		logger:           log.New(os.Stdout, "gameplay: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
+}
+
+// Run runs a given gameplay server on the given port
+func (gs *Server) Run(port string) {
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /gameplay/entry", gs.HandleEnterLevelRequest)
+	mux.HandleFunc("POST /gameplay/result", gs.HandleLevelResultRequest)
+
+	gs.logger.Println("the gameplay server is up and running...")
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleEnterLevelRequest accepts / rejects a request to enter a level based on current player data
@@ -65,17 +82,11 @@ func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *s
 func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
-		http.Error(w, "provided gameplay server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err := gs.validateDependencies()
-	if err != nil {
-		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = gs.requestValidator.ValidateRequest(r)
+	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -86,10 +97,10 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	entryRequest := &EnterLevelRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(entryRequest)
 	if err != nil {
-		http.Error(w, "could not decode the entry request", http.StatusBadRequest)
+		http.Error(w, "could not decode the entry request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request to enter level %v by player id %v \n ", entryRequest.Level, entryRequest.PlayerID)
+	gs.logger.Printf("request to enter level %v by player id %v", entryRequest.Level, entryRequest.PlayerID)
 
 	// get the config and the player data
 	cfg := config.Config
@@ -98,7 +109,8 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	player, err := gs.profileServer.GetPlayer(entryRequest.PlayerID)
+	// make a request to the profile service for the player data
+	player, err := gs.getPlayerFromProfile(entryRequest.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
@@ -119,7 +131,8 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		entryResponse.AccessGranted = true
 
 		// if player can enter, reduce the amount of energy
-		updatedPlayer, updateErr := gs.profileServer.UpdatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
+		// make a request to the profile service to update the player data
+		updatedPlayer, updateErr := gs.updatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
 		if updateErr != nil {
 			http.Error(w, "player error: "+updateErr.Error(), http.StatusInternalServerError)
 			return
@@ -132,7 +145,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(entryResponse)
 	if err != nil {
-		http.Error(w, "could not encode the response", http.StatusInternalServerError)
+		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -141,17 +154,11 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
-		http.Error(w, "provided gameplay server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err := gs.validateDependencies()
-	if err != nil {
-		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = gs.requestValidator.ValidateRequest(r)
+	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -162,14 +169,16 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	request := &LevelResultRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(request)
 	if err != nil {
-		http.Error(w, "could not decode the level result request", http.StatusBadRequest)
+		http.Error(w, "could not decode the level result request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("request for level results for level %v by player id %v \n ", request.Level, request.PlayerID)
+	gs.logger.Printf("request for level results for level %v by player id %v", request.Level, request.PlayerID)
 
 	// get the config and player, do basic validation there
 	cfg := config.Config
-	player, err := gs.profileServer.GetPlayer(request.PlayerID)
+
+	// make a request to the profile service for the player data
+	player, err := gs.getPlayerFromProfile(request.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
@@ -212,7 +221,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// update the player data to send back in the response
-	updatedPlayer, err := gs.profileServer.UpdatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
+	// make a request to the profile service to update the player data
+	updatedPlayer, err := gs.updatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -223,7 +233,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		Level:     request.Level,
 		WinCount:  0,
 		LossCount: 0,
-		BestScore: defaultLevelScore,
+		BestScore: config.Config.DefaultLevelScore,
 	}
 
 	if won {
@@ -233,7 +243,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		newStatsDelta.LossCount = 1
 	}
 
-	updatedStats, err := gs.statsServer.ReturnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
+	// make a request to the stats server to update the player stats
+	updatedStats, err := gs.returnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
 	if err != nil {
 		http.Error(w, "stats error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -250,19 +261,139 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		http.Error(w, "could not encode the response", http.StatusInternalServerError)
+		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func (gs *Server) validateDependencies() error {
+// getPlayerFromProfile makes an internal (server to server) request to the profile service to get the required player data
+func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*types.PlayerData, error) {
 
-	if gs.profileServer == nil {
-		return fmt.Errorf("profile server pointer is nil, please check construction")
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/profile/player-data/%v", constants.ProfileServerPort, playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Session-Id", sessionID)
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal get player data request was not successful, status code %v", resp.StatusCode)
 	}
 
-	if gs.statsServer == nil {
-		return fmt.Errorf("stats server pointer is nil, please check construction")
+	//decode the response for the player data
+	playerData := &types.PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return playerData, nil
+}
+
+// updatePlayerData makes an internal (server to server) request to the profile service to update the required player data
+func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel int32) (*types.PlayerData, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelEnergy{
+		PlayerID:    playerID,
+		Level:       newLevel,
+		EnergyDelta: energyDelta,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/profile/player-data-internal", constants.ProfileServerPort)
+	req, err := http.NewRequestWithContext(ctx, "PUT", reqURL, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal update player request was not successful, status code %v", resp.StatusCode)
+	}
+
+	//decode the response for the player data
+	playerData := &types.PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, err
+	}
+
+	return playerData, nil
+}
+
+// returnUpdatedPlayerStats makes an internal (server to server) request to the stats service to update the required player stats
+func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *types.PlayerLevelStats) (*types.PlayerStats, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelStats{
+		PlayerID:        playerID,
+		LevelStatsDelta: *newStatsDelta,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/stats/player-stats-internal", constants.StatsServerPort)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal update player request was not successful, status code %v", resp.StatusCode)
+	}
+
+	//decode the response for the player stats
+	playerStats := &types.PlayerStats{}
+	err = json.NewDecoder(resp.Body).Decode(playerStats)
+	if err != nil {
+		return nil, err
+	}
+
+	return playerStats, nil
 }
