@@ -291,3 +291,51 @@ func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*type
 
 	return playerData, nil
 }
+
+// updatePlayerData makes an internal (server to server) request to the profile service to update the required player data
+func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel int32) (*types.PlayerData, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelEnergy{
+		PlayerID:    playerID,
+		Level:       newLevel,
+		EnergyDelta: energyDelta,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/profile/player-data-internal", constants.ProfileServerPort)
+	req, err := http.NewRequestWithContext(ctx, "PUT", reqURL, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal update player request was not successful, status code %v", resp.StatusCode)
+	}
+
+	//decode the response for the player data
+	playerData := &types.PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, err
+	}
+
+	return playerData, nil
+}
