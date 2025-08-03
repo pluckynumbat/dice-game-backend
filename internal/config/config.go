@@ -29,12 +29,14 @@ type GameConfig struct {
 // Server is the core config service provider
 type Server struct {
 	requestValidator validation.RequestValidator
+	logger           *log.Logger
 }
 
 // NewConfigServer returns an initialized pointer to the config server
 func NewConfigServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		requestValidator: rv,
+		logger:           log.New(os.Stdout, "config: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
 }
 
@@ -69,16 +71,18 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 	err := cs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
+		cs.logger.Println("session validation error")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	fmt.Printf("config requested... \n ")
+	cs.logger.Print("config requested... \n ")
 
 	w.Header().Set("Content-Type", "application/json")
 
 	err = json.NewEncoder(w).Encode(Config)
 	if err != nil {
+		cs.logger.Println("could not encode game config")
 		http.Error(w, "could not encode game config", http.StatusInternalServerError)
 	}
 }
