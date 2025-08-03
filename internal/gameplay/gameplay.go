@@ -5,15 +5,15 @@ package gameplay
 import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
-	"example.com/dice-game-backend/internal/profile"
-	"example.com/dice-game-backend/internal/stats"
+	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 )
 
-const defaultLevelScore = 99 // has not won yet
+// Stats Specific Errors:
+var serverNilError = fmt.Errorf("provided gameplay server pointer is nil")
 
 type EnterLevelRequestBody struct {
 	PlayerID string `json:"playerID"`
@@ -45,17 +45,11 @@ type LevelResultResponse struct {
 }
 
 type Server struct {
-	profileServer *profile.Server
-	statsServer   *stats.Server
-
 	requestValidator validation.RequestValidator
 }
 
 func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server) *Server {
 	return &Server{
-		profileServer: ps,
-		statsServer:   ss,
-
 		requestValidator: rv,
 	}
 }
@@ -65,17 +59,11 @@ func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *s
 func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
-		http.Error(w, "provided gameplay server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err := gs.validateDependencies()
-	if err != nil {
-		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = gs.requestValidator.ValidateRequest(r)
+	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -98,7 +86,8 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	player, err := gs.profileServer.GetPlayer(entryRequest.PlayerID)
+	// make a request to the profile service for the player data
+	player, err := gs.getPlayerFromProfile(entryRequest.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
@@ -119,7 +108,8 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		entryResponse.AccessGranted = true
 
 		// if player can enter, reduce the amount of energy
-		updatedPlayer, updateErr := gs.profileServer.UpdatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
+		// make a request to the profile service to update the player data
+		updatedPlayer, updateErr := gs.updatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
 		if updateErr != nil {
 			http.Error(w, "player error: "+updateErr.Error(), http.StatusInternalServerError)
 			return
@@ -141,17 +131,11 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Request) {
 
 	if gs == nil {
-		http.Error(w, "provided gameplay server pointer is nil", http.StatusInternalServerError)
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	err := gs.validateDependencies()
-	if err != nil {
-		http.Error(w, "dependency error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	err = gs.requestValidator.ValidateRequest(r)
+	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
 		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
@@ -169,7 +153,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 
 	// get the config and player, do basic validation there
 	cfg := config.Config
-	player, err := gs.profileServer.GetPlayer(request.PlayerID)
+
+	// make a request to the profile service for the player data
+	player, err := gs.getPlayerFromProfile(request.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
 		return
@@ -212,7 +198,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// update the player data to send back in the response
-	updatedPlayer, err := gs.profileServer.UpdatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
+	// make a request to the profile service to update the player data
+	updatedPlayer, err := gs.updatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
 	if err != nil {
 		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -223,7 +210,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		Level:     request.Level,
 		WinCount:  0,
 		LossCount: 0,
-		BestScore: defaultLevelScore,
+		BestScore: config.Config.DefaultLevelScore,
 	}
 
 	if won {
@@ -233,7 +220,8 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		newStatsDelta.LossCount = 1
 	}
 
-	updatedStats, err := gs.statsServer.ReturnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
+	// make a request to the stats server to update the player stats
+	updatedStats, err := gs.returnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
 	if err != nil {
 		http.Error(w, "stats error: "+err.Error(), http.StatusInternalServerError)
 		return
