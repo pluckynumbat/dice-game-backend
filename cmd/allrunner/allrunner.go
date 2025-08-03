@@ -29,6 +29,32 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 	return validation.ValidateRequest(req)
 }
 
+// This function loops till the player inputs the given quit keys ('0', or 'q', or 'Q')
+// or manually interrupts (ctrl+c) the terminal window
+func waitLoop() {
+
+	fmt.Println("at any point, press 0 or Q (followed by Enter) to quit...")
+
+	userInput := ""
+
+	for done := false; done != true; {
+
+		_, err := fmt.Scan(&userInput)
+		if err != nil {
+			fmt.Println(fmt.Errorf("input failed with %v \n", err))
+			break
+		}
+
+		switch userInput {
+		case "Q", "q", "0":
+			fmt.Println("shutting down all the servers...")
+			done = true
+
+		default:
+			done = false
+		}
+	}
+}
 
 func main() {
 	fmt.Println("starting all the servers...")
