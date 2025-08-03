@@ -21,7 +21,6 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 
 func main() {
 	fmt.Println("starting the stats server...")
-
 	statsServer := stats.NewStatsServer(&requestValidator{})
 	statsServer.Run(constants.StatsServerPort)
 }
