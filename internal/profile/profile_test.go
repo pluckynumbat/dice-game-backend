@@ -21,7 +21,7 @@ import (
 func TestMain(m *testing.M) {
 
 	dataServer := data.NewDataServer()
-	go dataServer.RunDataServer(constants.DataServerPort)
+	go dataServer.Run(constants.DataServerPort)
 
 	code := m.Run()
 
@@ -247,6 +247,84 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 
 			profileServer := test.server
 			profileServer.HandlePlayerDataRequest(respRec, newReq)
+
+			gotStatus := respRec.Result().StatusCode
+
+			if gotStatus != test.wantStatus {
+				t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantStatus, gotStatus)
+			}
+
+			if gotStatus == http.StatusOK {
+				gotContentType := respRec.Result().Header.Get("Content-Type")
+
+				if gotContentType != test.wantContentType {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
+				}
+
+				gotResponseBody := &types.PlayerData{}
+				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
+				if err != nil {
+					t.Fatal("could not decode the response body")
+				}
+
+				if !reflect.DeepEqual(gotResponseBody, test.wantResponseBody) {
+					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantResponseBody, gotResponseBody)
+				}
+			}
+		})
+	}
+}
+
+func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
+
+	authServer := auth.NewAuthServer()
+	ps := NewProfileServer(authServer)
+
+	err := ps.writePlayerToDB(&types.PlayerData{"player8", 1, 20, time.Now().UTC().Unix()})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
+	}
+	err = ps.writePlayerToDB(&types.PlayerData{"player9", 2, 20, time.Now().UTC().Unix()})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
+	}
+	err = ps.writePlayerToDB(&types.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()})
+	if err != nil {
+		t.Fatalf("%v \n", err.Error())
+	}
+
+	tests := []struct {
+		name             string
+		server           *Server
+		playerID         string
+		energyDelta      int32
+		newLevel         int32
+		wantStatus       int
+		wantContentType  string
+		wantResponseBody *types.PlayerData
+	}{
+		{"nil server", nil, "", 0, 0, http.StatusInternalServerError, "", nil},
+		{"invalid player", ps, "player7", 0, 0, http.StatusBadRequest, "", nil},
+		{"valid player, more energy", ps, "player8", 20, 1, http.StatusOK, "application/json", &types.PlayerData{"player8", 1, 40, time.Now().UTC().Unix()}},
+		{"valid player, new level", ps, "player9", 10, 3, http.StatusOK, "application/json", &types.PlayerData{"player9", 3, 30, time.Now().UTC().Unix()}},
+		{"valid player, max energy, max level, ", ps, "player10", 100, 100, http.StatusOK, "application/json", &types.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			buf := &bytes.Buffer{}
+			reqBody := &types.PlayerIDLevelEnergy{test.playerID, test.newLevel, test.energyDelta}
+			err2 := json.NewEncoder(buf).Encode(reqBody)
+			if err2 != nil {
+				t.Fatal("could not encode the request body: " + err2.Error())
+			}
+
+			newReq := httptest.NewRequest(http.MethodPut, "/profile/player-data-internal", buf)
+			respRec := httptest.NewRecorder()
+
+			profileServer := test.server
+			profileServer.HandleUpdatePlayerRequest(respRec, newReq)
 
 			gotStatus := respRec.Result().StatusCode
 
