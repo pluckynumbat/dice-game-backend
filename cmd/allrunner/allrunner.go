@@ -3,6 +3,13 @@
 package main
 
 import (
+	"example.com/dice-game-backend/internal/auth"
+	"example.com/dice-game-backend/internal/config"
+	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/data"
+	"example.com/dice-game-backend/internal/gameplay"
+	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
@@ -25,4 +32,24 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 
 func main() {
 	fmt.Println("starting all the servers...")
+
+	rv := &requestValidator{}
+
+	authServer := auth.NewAuthServer()
+	go authServer.Run(constants.AuthServerPort)
+
+	dataServer := data.NewDataServer()
+	go dataServer.Run(constants.DataServerPort)
+
+	configServer := config.NewConfigServer(rv)
+	go configServer.Run(constants.ConfigServerPort)
+
+	profileServer := profile.NewProfileServer(rv)
+	go profileServer.Run(constants.ProfileServerPort)
+
+	statsServer := stats.NewStatsServer(rv)
+	go statsServer.Run(constants.StatsServerPort)
+
+	gameplayServer := gameplay.NewGameplayServer(rv)
+	go gameplayServer.Run(constants.GameplayServerPort)
 }
