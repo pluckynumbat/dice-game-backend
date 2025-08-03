@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -54,6 +55,8 @@ type Server struct {
 	authMutex sync.Mutex
 
 	serverVersion string
+
+	logger *log.Logger
 }
 
 // NewAuthServer returns an initialized pointer to the auth server
@@ -66,6 +69,8 @@ func NewAuthServer() *Server {
 		authMutex: sync.Mutex{},
 
 		serverVersion: strconv.FormatInt(time.Now().UTC().Unix(), 10),
+
+		logger: log.New(os.Stdout, "auth: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
 }
 
@@ -84,6 +89,8 @@ func (as *Server) RunAuthServer(port string) {
 	mux.HandleFunc("DELETE /auth/logout", as.HandleLogoutRequest)
 
 	mux.HandleFunc("POST /auth/validation-internal", as.HandleValidateRequest)
+
+	as.logger.Println("the auth server is up and running...")
 
 	addr := constants.CommonHost + ":" + port
 	log.Fatal(http.ListenAndServe(addr, mux))
@@ -107,7 +114,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// get the username and password from the base 64 encoded data in the auth header
 	usr, pwd, err := as.decodeAuthHeaderPayload(authHeader[0])
 	if err != nil {
-		http.Error(w, "cannot decode the given credentials", http.StatusBadRequest)
+		http.Error(w, "cannot decode the given credentials: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -115,7 +122,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	lrb := &LoginRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(lrb)
 	if err != nil {
-		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -132,7 +139,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		isNewUser = lrb.IsNewUser
 	}
 
-	fmt.Printf("received auth login request at: %v , for new user? %v \n", time.Now().UTC(), isNewUser)
+	as.logger.Printf("received auth login request, is it for a new user? %v \n", isNewUser)
 
 	as.authMutex.Lock()
 	defer as.authMutex.Unlock()
@@ -162,7 +169,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// generate the player id
 	pID, err := as.generatePlayerID(usr)
 	if err != nil {
-		http.Error(w, "could not generate player id", http.StatusInternalServerError)
+		http.Error(w, "could not generate player id: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -173,7 +180,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	otherSession, exists := as.activePlayerIDs[pID]
 	if exists {
 		// if they do, delete that session,
-		fmt.Printf("found an already existing session for the player id %v, deleting it \n", pID)
+		as.logger.Printf("found an already existing session for the player id %v, deleting it \n", pID)
 		delete(as.sessions, otherSession)
 	}
 
@@ -191,7 +198,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// provide the player id and server version in the response body
 	err = json.NewEncoder(w).Encode(&LoginResponse{pID, as.serverVersion})
 	if err != nil {
-		http.Error(w, "could not create response", http.StatusInternalServerError)
+		http.Error(w, "could not create response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -212,7 +219,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("received auth logout request at: %v \n", time.Now().UTC())
+	as.logger.Printf("received auth logout request \n")
 
 	// the above validation guarantees that we have an active session which matches the Session-Id header
 	// so we can just delete the required entry
@@ -227,7 +234,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response", http.StatusInternalServerError)
+		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -247,7 +254,7 @@ func (as *Server) decodeAuthHeaderPayload(encodedCred string) (string, string, e
 	decodedCred, err := base64.StdEncoding.DecodeString(encodedCred)
 
 	if err != nil {
-		return "", "", fmt.Errorf("cannot decode the given credentials")
+		return "", "", fmt.Errorf("cannot decode the given credentials: %v \n", err.Error())
 	}
 
 	// separate the username and password
@@ -319,14 +326,14 @@ func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) 
 
 	err := as.ValidateRequest(r)
 	if err != nil {
-		http.Error(w, serverNilError.Error(), http.StatusUnauthorized)
+		http.Error(w, "session validation failed: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// provide the success response, if the status is 200, validation will be considered to be successful
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response", http.StatusInternalServerError)
+		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -358,7 +365,7 @@ func (as *Server) deleteAllStaleSessions(timeNow time.Time, expirySeconds int64)
 		stale := (unixNow - session.LastActionTime) > expirySeconds
 
 		if stale {
-			fmt.Printf("found an old session for player id: %v, deleting it \n", session.PlayerID)
+			as.logger.Printf("found an old session for player id: %v, deleting it \n", session.PlayerID)
 			err := as.deleteSession(sID)
 			if err != nil {
 				return err
@@ -381,7 +388,7 @@ func (as *Server) StartPeriodicSessionSweep(sweepPeriod time.Duration, sessionEx
 	go func() {
 		for {
 			timeNow := <-ticker.C
-			fmt.Printf("periodic session sweep tick at %v \n", timeNow.UTC())
+			as.logger.Printf("periodic session sweep tick at \n")
 			err := as.deleteAllStaleSessions(timeNow, sessionExpirySeconds)
 			if err != nil {
 				fmt.Printf("error in the periodic session sweep, abort")
