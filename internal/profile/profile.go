@@ -240,6 +240,40 @@ func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel 
 	return player, nil
 }
 
+// HandleUpdatePlayerRequest is a wrapper around the UpdatePlayerData() method which will
+// be used to field internal (server to server) requests to return updated player data
+func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ps == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// decode the request body, which should be a PlayerIDLevelEnergy struct
+	decodedReq := &types.PlayerIDLevelEnergy{}
+	err := json.NewDecoder(r.Body).Decode(decodedReq)
+	if err != nil {
+		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("update player data request for id: %v \n ", decodedReq.PlayerID)
+
+	// try to update the player data
+	updatedPlayer, err := ps.UpdatePlayerData(decodedReq.PlayerID, decodedReq.EnergyDelta, decodedReq.Level)
+	if err != nil {
+		http.Error(w, "could not update player data: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// create and send the response
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(updatedPlayer)
+	if err != nil {
+		http.Error(w, "could not encode updated player data", http.StatusInternalServerError)
+	}
+}
+
 // updateEnergy will update energy values of the given player:
 // first it will update (possibly stale) energy based on passive energy regeneration
 // then it will update it based on the provided energy delta
