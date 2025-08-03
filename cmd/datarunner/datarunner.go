@@ -10,5 +10,5 @@ import (
 func main() {
 	fmt.Println("starting the data server...")
 	dataServer := data.NewDataServer()
-	dataServer.RunDataServer(constants.DataServerPort)
+	dataServer.Run(constants.DataServerPort)
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -38,6 +39,8 @@ type Server struct {
 
 	statsDB    map[string]types.PlayerStats
 	statsMutex sync.Mutex
+
+	logger *log.Logger
 }
 
 // NewDataServer returns an initialized pointer to the data server
@@ -49,13 +52,15 @@ func NewDataServer() *Server {
 
 		statsDB:    map[string]types.PlayerStats{},
 		statsMutex: sync.Mutex{},
+
+		logger: log.New(os.Stdout, "data: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
 
 	return ds
 }
 
-// RunDataServer runs a given data server on the designated port
-func (ds *Server) RunDataServer(port string) {
+// Run runs a given data server on the designated port
+func (ds *Server) Run(port string) {
 
 	if ds == nil {
 		fmt.Println(serverNilError)
@@ -69,6 +74,8 @@ func (ds *Server) RunDataServer(port string) {
 
 	mux.HandleFunc("POST /data/stats-internal", ds.HandleWritePlayerStatsRequest)
 	mux.HandleFunc("GET /data/stats-internal/{id}", ds.HandleReadPlayerStatsRequest)
+
+	ds.logger.Println("the data server is up and running...")
 
 	addr := constants.CommonHost + ":" + port
 	log.Fatal(http.ListenAndServe(addr, mux))
@@ -87,7 +94,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	decodedReq := &types.PlayerData{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -96,7 +103,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fmt.Printf("writing player DB entry for id: %v \n ", decodedReq.PlayerID)
+	ds.logger.Printf("writing player DB entry for id: %v \n ", decodedReq.PlayerID)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
@@ -109,7 +116,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response", http.StatusInternalServerError)
+		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -124,7 +131,7 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 
 	// get the id from the path value of the request
 	id := r.PathValue("id")
-	fmt.Printf("player DB entry requested for id: %v \n ", id)
+	ds.logger.Printf("player DB entry requested for id: %v \n ", id)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
@@ -141,7 +148,7 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(player)
 	if err != nil {
-		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -158,7 +165,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	decodedReq := &types.PlayerStatsWithID{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body", http.StatusBadRequest)
+		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -167,7 +174,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	fmt.Printf("writing stats DB entry for id: %v \n ", decodedReq.PlayerID)
+	ds.logger.Printf("writing stats DB entry for id: %v \n ", decodedReq.PlayerID)
 
 	ds.statsMutex.Lock()
 	defer ds.statsMutex.Unlock()
@@ -180,7 +187,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response", http.StatusInternalServerError)
+		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
@@ -195,7 +202,7 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 
 	// get the id from the path value of the request
 	id := r.PathValue("id")
-	fmt.Printf("stats DB entry requested for id: %v \n ", id)
+	ds.logger.Printf("stats DB entry requested for id: %v \n ", id)
 
 	ds.statsMutex.Lock()
 	defer ds.statsMutex.Unlock()
@@ -212,6 +219,6 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(plStats)
 	if err != nil {
-		http.Error(w, "could not encode player data", http.StatusInternalServerError)
+		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }

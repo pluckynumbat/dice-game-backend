@@ -74,8 +74,8 @@ func NewAuthServer() *Server {
 	}
 }
 
-// RunAuthServer runs a given auth server on the given port
-func (as *Server) RunAuthServer(port string) {
+// Run runs a given auth server on the given port
+func (as *Server) Run(port string) {
 
 	if as == nil {
 		fmt.Println(serverNilError)

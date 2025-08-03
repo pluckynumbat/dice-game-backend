@@ -10,5 +10,5 @@ import (
 func main() {
 	fmt.Println("starting the auth server...")
 	authServer := auth.NewAuthServer()
-	authServer.RunAuthServer(constants.AuthServerPort)
+	authServer.Run(constants.AuthServerPort)
 }
