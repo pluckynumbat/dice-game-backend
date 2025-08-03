@@ -115,7 +115,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		http.Error(w, "could not encode player data: " + err.Error(), http.StatusInternalServerError)
+		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -184,6 +184,40 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *types
 	}
 
 	return playerStats, nil
+}
+
+// HandleUpdatePlayerStatsRequest is a wrapper around the ReturnUpdatedPlayerStats() method which will
+// be used to field internal (server to server) requests to return updated player stats
+func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.Request) {
+
+	if ss == nil {
+		http.Error(w, serverNilError.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// decode the request body, which should be a PlayerIDWithDeltaLevelStats struct
+	decodedReq := &types.PlayerIDWithDeltaLevelStats{}
+	err := json.NewDecoder(r.Body).Decode(decodedReq)
+	if err != nil {
+		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ss.logger.Printf("update and return stats request for id: %v", decodedReq.PlayerID)
+
+	// try to update the stats
+	updatedStats, err := ss.ReturnUpdatedPlayerStats(decodedReq.PlayerID, &decodedReq.DeltaLevelStats)
+	if err != nil {
+		http.Error(w, "could not update player stats: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// create and send the response
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(updatedStats)
+	if err != nil {
+		http.Error(w, "could not encode updated stats: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
