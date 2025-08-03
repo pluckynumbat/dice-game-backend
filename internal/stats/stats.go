@@ -55,6 +55,20 @@ func NewStatsServer(rv validation.RequestValidator) *Server {
 	}
 }
 
+// Run runs a given stats server on the given port
+func (ss *Server) Run(port string) {
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /stats/player-stats/{id}", ss.HandlePlayerStatsRequest)
+	mux.HandleFunc("POST /stats/player-stats-internal", ss.HandleUpdatePlayerStatsRequest)
+
+	ss.logger.Println("the stats server is up and running...")
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
 // HandlePlayerStatsRequest responds with the player stats data if present
 func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Request) {
 
