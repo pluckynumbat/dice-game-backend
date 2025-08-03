@@ -10,7 +10,9 @@ import (
 	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -36,6 +38,8 @@ type Server struct {
 	energyRegenPerSecond float64
 
 	requestValidator validation.RequestValidator
+
+	logger *log.Logger
 }
 
 // NewProfileServer returns an initialized pointer to the profile server
@@ -50,6 +54,7 @@ func NewProfileServer(rv validation.RequestValidator) *Server {
 		energyRegenPerSecond: 0,
 
 		requestValidator: rv,
+		logger:           log.New(os.Stdout, "profile: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
 
 	// avoid divide by zero
@@ -58,6 +63,21 @@ func NewProfileServer(rv validation.RequestValidator) *Server {
 	}
 
 	return ps
+}
+
+// Run runs a given profile server on the given port
+func (ps *Server) Run(port string) {
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /profile/new-player", ps.HandleNewPlayerRequest)
+	mux.HandleFunc("GET /profile/player-data/{id}", ps.HandlePlayerDataRequest)
+	mux.HandleFunc("PUT /profile/player-data-internal", ps.HandleUpdatePlayerRequest)
+
+	ps.logger.Println("the profile server is up and running...")
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleNewPlayerRequest creates a new player in the map
