@@ -13,6 +13,7 @@ import (
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // the request validator struct implements a wrapper around the common method
@@ -32,9 +33,6 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 // This function loops till the player inputs the given quit keys ('0', or 'q', or 'Q')
 // or manually interrupts (ctrl+c) the terminal window
 func waitLoop() {
-
-	fmt.Println("at any point, press 0 or Q (followed by Enter) to quit...")
-
 	userInput := ""
 
 	for done := false; done != true; {
@@ -78,4 +76,8 @@ func main() {
 
 	gameplayServer := gameplay.NewGameplayServer(rv)
 	go gameplayServer.Run(constants.GameplayServerPort)
+
+	time.Sleep(500 * time.Millisecond) // wait some time so that the following instructions to exit the loop are on the last line
+	fmt.Println("at any point, press 0 or q or Q (followed by Enter) to quit...")
+	waitLoop()
 }
