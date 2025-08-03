@@ -3,13 +3,18 @@
 package gameplay
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/types"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"time"
 )
 
 // Stats Specific Errors:
@@ -44,14 +49,32 @@ type LevelResultResponse struct {
 	Stats       types.PlayerStats `json:"statsData"`
 }
 
+// Server is the core gameplay service provider
 type Server struct {
 	requestValidator validation.RequestValidator
+	logger           *log.Logger
 }
 
-func NewGameplayServer(rv validation.RequestValidator, ps *profile.Server, ss *stats.Server) *Server {
+// NewGameplayServer returns an initialized pointer to the gameplay server
+func NewGameplayServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		requestValidator: rv,
+		logger:           log.New(os.Stdout, "gameplay: ", log.Ltime|log.LUTC|log.Lmsgprefix),
 	}
+}
+
+// Run runs a given gameplay server on the given port
+func (gs *Server) Run(port string) {
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /gameplay/entry", gs.HandleEnterLevelRequest)
+	mux.HandleFunc("POST /gameplay/result", gs.HandleLevelResultRequest)
+
+	gs.logger.Println("the gameplay server is up and running...")
+
+	addr := constants.CommonHost + ":" + port
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
 // HandleEnterLevelRequest accepts / rejects a request to enter a level based on current player data
