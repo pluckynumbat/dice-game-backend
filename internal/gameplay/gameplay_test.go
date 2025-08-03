@@ -18,10 +18,22 @@ import (
 	"testing"
 )
 
+var authServer *auth.Server
+var profileServer *profile.Server
+
 func TestMain(m *testing.M) {
 
+	authServer = auth.NewAuthServer()
+	go authServer.Run(constants.AuthServerPort)
+
 	dataServer := data.NewDataServer()
-	go dataServer.RunDataServer(constants.DataServerPort)
+	go dataServer.Run(constants.DataServerPort)
+
+	profileServer = profile.NewProfileServer(authServer)
+	go profileServer.Run(constants.ProfileServerPort)
+
+	statsServer := stats.NewStatsServer(authServer)
+	go statsServer.Run(constants.StatsServerPort)
 
 	code := m.Run()
 
@@ -31,10 +43,8 @@ func TestMain(m *testing.M) {
 func TestNewGameplayServer(t *testing.T) {
 
 	as := auth.NewAuthServer()
-	ps := profile.NewProfileServer(as)
-	ss := stats.NewStatsServer(as)
 
-	gs := NewGameplayServer(as, ps, ss)
+	gs := NewGameplayServer(as)
 
 	if gs == nil {
 		t.Fatal("new profile server should not return a nil server pointer")
@@ -43,25 +53,18 @@ func TestNewGameplayServer(t *testing.T) {
 
 func TestServer_HandleEnterLevelRequest(t *testing.T) {
 
-	as, sID, err := testsetup.SetupTestAuth()
+	sID, err := testsetup.SetupTestAuthWithInput(authServer, "user1", "pass1")
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := profile.NewProfileServer(as)
-
-	newPlayerData, err := setupTestProfile("player2", sID, ps)
+	newPlayerData, err := setupTestProfile("player2", sID, profileServer)
 	if err != nil {
 		t.Fatal("profile setup error: " + err.Error())
 	}
 	energyCost := config.Config.Levels[0].EnergyCost
 
-	ss := stats.NewStatsServer(as)
-
-	gs := NewGameplayServer(as, ps, ss)
-
-	invGS1 := NewGameplayServer(as, nil, ss)
-	invGS2 := NewGameplayServer(as, ps, nil)
+	gs := NewGameplayServer(authServer)
 
 	tests := []struct {
 		name             string
@@ -77,8 +80,6 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
 		{"invalid player", gs, sID, &EnterLevelRequestBody{"player1", 1}, http.StatusBadRequest, "application/json", nil},
 		{"invalid level", gs, sID, &EnterLevelRequestBody{"player2", 50}, http.StatusBadRequest, "application/json", nil},
-		{"nil dependency 1", invGS1, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
-		{"nil dependency 2", invGS2, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusInternalServerError, "application/json", nil},
 		{"locked level", gs, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusOK, "application/json", &EnterLevelResponse{false, *newPlayerData}},
 		{name: "valid level", server: gs, sessionID: sID, requestBody: &EnterLevelRequestBody{"player2", 1}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &EnterLevelResponse{
 			AccessGranted: true,
@@ -135,26 +136,19 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 
 func TestServer_HandleLevelResultRequest(t *testing.T) {
 
-	as, sID, err := testsetup.SetupTestAuth()
+	sID, err := testsetup.SetupTestAuthWithInput(authServer, "user2", "pass2")
 	if err != nil {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := profile.NewProfileServer(as)
-
-	newPlayer3, err := setupTestProfile("player3", sID, ps)
+	newPlayer3, err := setupTestProfile("player3", sID, profileServer)
 	if err != nil {
 		t.Fatal("profile setup error: " + err.Error())
 	}
 
 	energyReward := config.Config.Levels[0].EnergyReward
 
-	ss := stats.NewStatsServer(as)
-
-	gs := NewGameplayServer(as, ps, ss)
-
-	invGS1 := NewGameplayServer(as, nil, ss)
-	invGS2 := NewGameplayServer(as, ps, nil)
+	gs := NewGameplayServer(authServer)
 
 	tests := []struct {
 		name             string
@@ -168,8 +162,6 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		{"nil server", nil, "", nil, http.StatusInternalServerError, "", nil},
 		{"blank session id", gs, "", nil, http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
-		{"nil dependency 1", invGS1, sID, nil, http.StatusInternalServerError, "application/json", nil},
-		{"nil dependency 2", invGS2, sID, nil, http.StatusInternalServerError, "application/json", nil},
 		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusBadRequest, "application/json", nil},
 		{"invalid level", gs, sID, &LevelResultRequestBody{"player3", 50, nil}, http.StatusBadRequest, "application/json", nil},
 		{"locked level", gs, sID, &LevelResultRequestBody{"player3", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
@@ -239,7 +231,7 @@ func setupTestProfile(playerID string, sessionID string, profileServer *profile.
 		return nil, err
 	}
 
-	newReq := httptest.NewRequest(http.MethodPost, "/profile/new-player/", buf)
+	newReq := httptest.NewRequest(http.MethodPost, "/profile/new-player", buf)
 	newReq.Header.Set("Session-Id", sessionID)
 	respRec := httptest.NewRecorder()
 
