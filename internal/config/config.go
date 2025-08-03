@@ -92,7 +92,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cs.logger.Print("config requested... \n ")
+	cs.logger.Print("config requested... \n")
 
 	w.Header().Set("Content-Type", "application/json")
 

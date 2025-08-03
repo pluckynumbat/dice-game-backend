@@ -103,7 +103,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	ds.logger.Printf("writing player DB entry for id: %v \n ", decodedReq.PlayerID)
+	ds.logger.Printf("writing player DB entry for id: %v", decodedReq.PlayerID)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
@@ -131,7 +131,7 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 
 	// get the id from the path value of the request
 	id := r.PathValue("id")
-	ds.logger.Printf("player DB entry requested for id: %v \n ", id)
+	ds.logger.Printf("player DB entry requested for id: %v", id)
 
 	ds.playersMutex.Lock()
 	defer ds.playersMutex.Unlock()
@@ -174,7 +174,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	ds.logger.Printf("writing stats DB entry for id: %v \n ", decodedReq.PlayerID)
+	ds.logger.Printf("writing stats DB entry for id: %v", decodedReq.PlayerID)
 
 	ds.statsMutex.Lock()
 	defer ds.statsMutex.Unlock()
@@ -202,7 +202,7 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 
 	// get the id from the path value of the request
 	id := r.PathValue("id")
-	ds.logger.Printf("stats DB entry requested for id: %v \n ", id)
+	ds.logger.Printf("stats DB entry requested for id: %v", id)
 
 	ds.statsMutex.Lock()
 	defer ds.statsMutex.Unlock()

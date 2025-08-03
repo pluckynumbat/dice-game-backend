@@ -122,7 +122,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	ps.logger.Printf("creating new player with id: %v \n ", newPlayer.PlayerID)
+	ps.logger.Printf("creating new player with id: %v", newPlayer.PlayerID)
 
 	// tell the data service to store the new player in the player DB
 	err = ps.writePlayerToDB(newPlayer)
@@ -156,7 +156,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	// get the id from the request uri
 	id := r.PathValue("id")
-	ps.logger.Printf("player data requested for id: %v \n ", id)
+	ps.logger.Printf("player data requested for id: %v", id)
 
 	player, err := ps.GetPlayer(id)
 	if err != nil {
@@ -257,7 +257,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ps.logger.Printf("update player data request for id: %v \n ", decodedReq.PlayerID)
+	ps.logger.Printf("update player data request for id: %v", decodedReq.PlayerID)
 
 	// try to update the player data
 	updatedPlayer, err := ps.UpdatePlayerData(decodedReq.PlayerID, decodedReq.EnergyDelta, decodedReq.Level)
