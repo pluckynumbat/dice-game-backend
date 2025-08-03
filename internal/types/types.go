@@ -16,6 +16,14 @@ type PlayerData struct {
 	LastUpdateTime int64  `json:"lastUpdateTime"`
 }
 
+// PlayerIDLevelEnergy is used as a request body for the internal request to
+// update players data and return them
+type PlayerIDLevelEnergy struct {
+	PlayerID    string `json:"playerID"`
+	Level       int32  `json:"level"`
+	EnergyDelta int32  `json:"energyDelta"`
+}
+
 // PlayerLevelStats are for a given level for a given player
 type PlayerLevelStats struct {
 	Level     int32 `json:"level"`
