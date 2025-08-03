@@ -339,3 +339,50 @@ func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel 
 
 	return playerData, nil
 }
+
+// returnUpdatedPlayerStats makes an internal (server to server) request to the stats service to update the required player stats
+func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *types.PlayerLevelStats) (*types.PlayerStats, error) {
+
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request body
+	reqBody := &bytes.Buffer{}
+	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelStats{
+		PlayerID:        playerID,
+		LevelStatsDelta: *newStatsDelta,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/stats/player-stats-internal", constants.StatsServerPort)
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal update player request was not successful, status code %v", resp.StatusCode)
+	}
+
+	//decode the response for the player stats
+	playerStats := &types.PlayerStats{}
+	err = json.NewDecoder(resp.Body).Decode(playerStats)
+	if err != nil {
+		return nil, err
+	}
+
+	return playerStats, nil
+}
