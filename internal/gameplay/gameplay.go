@@ -254,15 +254,40 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (gs *Server) validateDependencies() error {
+// getPlayerFromProfile makes an internal (server to server) request to the profile service to get the required player data
+func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*types.PlayerData, error) {
 
-	if gs.profileServer == nil {
-		return fmt.Errorf("profile server pointer is nil, please check construction")
+	// create a new context
+	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
+	defer cancel()
+
+	// create the request
+	reqURL := fmt.Sprintf("http://:%v/profile/player-data/%v", constants.ProfileServerPort, playerID)
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Session-Id", sessionID)
+
+	// send the request
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// check response status
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("internal get player data request was not successful, status code %v", resp.StatusCode)
 	}
 
-	if gs.statsServer == nil {
-		return fmt.Errorf("stats server pointer is nil, please check construction")
+	//decode the response for the player data
+	playerData := &types.PlayerData{}
+	err = json.NewDecoder(resp.Body).Decode(playerData)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return playerData, nil
 }
