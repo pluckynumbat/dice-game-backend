@@ -2,8 +2,8 @@
 package main
 
 import (
-	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/data"
+	"example.com/dice-game-backend/internal/shared/constants"
 	"fmt"
 )
 

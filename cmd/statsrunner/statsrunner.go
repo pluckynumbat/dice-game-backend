@@ -2,9 +2,9 @@
 package main
 
 import (
-	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/shared/constants"
+	"example.com/dice-game-backend/internal/shared/validation"
 	"example.com/dice-game-backend/internal/stats"
-	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"net/http"
 )
