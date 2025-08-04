@@ -22,15 +22,6 @@ const invalidStatusCode int32 = -1
 // Stats Specific Errors:
 var serverNilError = fmt.Errorf("provided stats server pointer is nil")
 
-type playerStatsNotFoundErr struct {
-	playerID string
-	level    int32
-}
-
-func (err playerStatsNotFoundErr) Error() string {
-	return fmt.Sprintf("stats entry for id: %v (level %v) is not present \n", err.playerID, err.level)
-}
-
 // Stats structs (not used in data storage):
 
 // PlayerIDLevelStats is used as a request body for the internal request to update

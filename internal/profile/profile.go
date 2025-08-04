@@ -20,14 +20,6 @@ import (
 // Profile Specific Errors:
 var serverNilError = fmt.Errorf("provided profile server pointer is nil")
 
-type playerNotFoundErr struct {
-	playerID string
-}
-
-func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found", err.playerID)
-}
-
 // Profile structs (not used in data storage):
 
 // NewPlayerRequestBody just contains the player ID
