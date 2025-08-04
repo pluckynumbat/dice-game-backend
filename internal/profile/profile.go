@@ -137,7 +137,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	// so successful get here means failure for us!
 	_, err = ps.readPlayerFromDB(decodedReq.PlayerID)
 	if err == nil {
-		errMsg := "player exists already"
+		errMsg := "error: player exists already"
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -158,7 +158,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(newPlayer)
 	if err != nil {
-		errMsg := "could not encode player data: " + err.Error()
+		errMsg := "error: could not encode player data: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
@@ -187,7 +187,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	player, err := ps.GetPlayer(id)
 	if err != nil {
-		errMsg := "player error: " + err.Error()
+		errMsg := "get player error: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -197,7 +197,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
-		errMsg := "could not encode player data: " + err.Error()
+		errMsg := "error: could not encode player data: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
@@ -284,7 +284,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	decodedReq := &PlayerIDLevelEnergy{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		errMsg := "could not decode request body: " + err.Error()
+		errMsg := "error: could not decode request body: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -295,7 +295,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	// try to update the player data
 	updatedPlayer, err := ps.UpdatePlayerData(decodedReq.PlayerID, decodedReq.EnergyDelta, decodedReq.Level)
 	if err != nil {
-		errMsg := "could not update player data: " + err.Error()
+		errMsg := "error: could not update player data: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -305,7 +305,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(updatedPlayer)
 	if err != nil {
-		errMsg := "could not encode updated player data: " + err.Error()
+		errMsg := "error: could not encode updated player data: " + err.Error()
 		ps.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
