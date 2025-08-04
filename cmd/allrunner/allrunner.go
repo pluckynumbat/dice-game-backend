@@ -74,7 +74,7 @@ func main() {
 	statsServer := stats.NewServer(rv)
 	go statsServer.Run(constants.StatsServerPort)
 
-	gameplayServer := gameplay.NewGameplayServer(rv)
+	gameplayServer := gameplay.NewServer(rv)
 	go gameplayServer.Run(constants.GameplayServerPort)
 
 	time.Sleep(500 * time.Millisecond) // wait some time so that the following instructions to exit the loop are on the last line
