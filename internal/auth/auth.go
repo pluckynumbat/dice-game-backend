@@ -59,8 +59,8 @@ type Server struct {
 	logger *log.Logger
 }
 
-// NewAuthServer returns an initialized pointer to the auth server
-func NewAuthServer() *Server {
+// NewServer returns an initialized pointer to the auth server
+func NewServer() *Server {
 	return &Server{
 		credentials:     map[string]string{},
 		sessions:        map[string]*SessionData{},
@@ -229,7 +229,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	err := as.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		errMsg := "session error: " + err.Error()
+		errMsg := "session validation error: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
