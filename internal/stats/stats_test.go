@@ -66,7 +66,7 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 		expError  error
 	}{
 		{"nil server", s1, "player1", &data.PlayerLevelStats{}, &data.PlayerStats{}, serverNilError},
-		{"invalid player", s2, "player1", &data.PlayerLevelStats{5, 1, 0, 4}, nil, playerStatsNotFoundErr{"player1", 5}},
+		{"invalid player", s2, "player1", &data.PlayerLevelStats{5, 1, 0, 4}, nil, data.PlayerStatsNotFoundErr{"player1"}},
 		{"valid new player", s2, "player2", &data.PlayerLevelStats{1, 0, 1, 99}, &data.PlayerStats{
 			[]data.PlayerLevelStats{
 				{1, 0, 1, 99},
