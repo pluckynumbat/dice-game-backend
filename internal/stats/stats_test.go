@@ -8,7 +8,6 @@ import (
 	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/testsetup"
-	"example.com/dice-game-backend/internal/types"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -44,12 +43,12 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 	authServer := auth.NewAuthServer()
 	s2 = NewStatsServer(authServer)
 
-	err := s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{nil}})
+	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"data", data.PlayerStats{nil}})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
 
-	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player3", types.PlayerStats{[]types.PlayerLevelStats{
+	err = s2.writeStatsToDB(&data.PlayerStatsWithID{"player3", data.PlayerStats{[]data.PlayerLevelStats{
 		{1, 2, 3, 1},
 		{2, 1, 4, 2},
 		{3, 0, 1, 99},
@@ -62,19 +61,19 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 		name      string
 		server    *Server
 		playerID  string
-		lvlStats  *types.PlayerLevelStats
-		wantStats *types.PlayerStats
+		lvlStats  *data.PlayerLevelStats
+		wantStats *data.PlayerStats
 		expError  error
 	}{
-		{"nil server", s1, "player1", &types.PlayerLevelStats{}, &types.PlayerStats{}, serverNilError},
-		{"invalid player", s2, "player1", &types.PlayerLevelStats{5, 1, 0, 4}, nil, playerStatsNotFoundErr{"player1", 5}},
-		{"valid new player", s2, "player2", &types.PlayerLevelStats{1, 0, 1, 99}, &types.PlayerStats{
-			[]types.PlayerLevelStats{
+		{"nil server", s1, "player1", &data.PlayerLevelStats{}, &data.PlayerStats{}, serverNilError},
+		{"invalid player", s2, "player1", &data.PlayerLevelStats{5, 1, 0, 4}, nil, playerStatsNotFoundErr{"player1", 5}},
+		{"valid new player", s2, "player2", &data.PlayerLevelStats{1, 0, 1, 99}, &data.PlayerStats{
+			[]data.PlayerLevelStats{
 				{1, 0, 1, 99},
 			},
 		}, nil},
-		{"valid existing player", s2, "player3", &types.PlayerLevelStats{3, 1, 0, 3}, &types.PlayerStats{
-			[]types.PlayerLevelStats{
+		{"valid existing player", s2, "player3", &data.PlayerLevelStats{3, 1, 0, 3}, &data.PlayerStats{
+			[]data.PlayerLevelStats{
 				{1, 2, 3, 1},
 				{2, 1, 4, 2},
 				{3, 1, 1, 3},
@@ -112,7 +111,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 
 	s2 = NewStatsServer(as)
 
-	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player2", types.PlayerStats{[]types.PlayerLevelStats{
+	err = s2.writeStatsToDB(&data.PlayerStatsWithID{"player2", data.PlayerStats{[]data.PlayerLevelStats{
 		{1, 2, 3, 1},
 		{2, 1, 4, 2},
 		{3, 0, 1, 99},
@@ -128,12 +127,12 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *types.PlayerStatsWithID
+		wantResponseBody *data.PlayerStatsWithID
 	}{
 		{"nil server", s1, "", "", http.StatusInternalServerError, "", nil},
 		{"valid server, blank session id", s2, "", "", http.StatusUnauthorized, "application/json", nil},
-		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &types.PlayerStatsWithID{"player1", types.PlayerStats{}}},
-		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &types.PlayerStatsWithID{"player2", types.PlayerStats{[]types.PlayerLevelStats{
+		{"valid server, valid session id, new user", s2, sID, "player1", http.StatusOK, "application/json", &data.PlayerStatsWithID{"player1", data.PlayerStats{}}},
+		{"valid server, valid session id, existing user", s2, sID, "player2", http.StatusOK, "application/json", &data.PlayerStatsWithID{"player2", data.PlayerStats{[]data.PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
 			{3, 0, 1, 99},
@@ -164,7 +163,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &types.PlayerStatsWithID{}
+				gotResponseBody := &data.PlayerStatsWithID{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
@@ -182,12 +181,12 @@ func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 
 	s2 := NewStatsServer(auth.NewAuthServer())
 
-	err := s2.writeStatsToDB(&types.PlayerStatsWithID{"player4", types.PlayerStats{nil}})
+	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"player4", data.PlayerStats{nil}})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
 
-	err = s2.writeStatsToDB(&types.PlayerStatsWithID{"player5", types.PlayerStats{[]types.PlayerLevelStats{
+	err = s2.writeStatsToDB(&data.PlayerStatsWithID{"player5", data.PlayerStats{[]data.PlayerLevelStats{
 		{1, 2, 3, 1},
 		{2, 1, 4, 2},
 		{3, 0, 1, 99},
@@ -200,20 +199,20 @@ func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 		name             string
 		server           *Server
 		playerID         string
-		lvlStats         *types.PlayerLevelStats
+		lvlStats         *data.PlayerLevelStats
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *types.PlayerStats
+		wantResponseBody *data.PlayerStats
 	}{
-		{"nil server", nil, "player1", &types.PlayerLevelStats{}, http.StatusInternalServerError, "", &types.PlayerStats{}},
-		{"invalid player", s2, "player1", &types.PlayerLevelStats{5, 1, 0, 4}, http.StatusBadRequest, "", nil},
-		{"valid new player", s2, "player4", &types.PlayerLevelStats{1, 0, 1, 99}, http.StatusOK, "application/json", &types.PlayerStats{
-			[]types.PlayerLevelStats{
+		{"nil server", nil, "player1", &data.PlayerLevelStats{}, http.StatusInternalServerError, "", &data.PlayerStats{}},
+		{"invalid player", s2, "player1", &data.PlayerLevelStats{5, 1, 0, 4}, http.StatusBadRequest, "", nil},
+		{"valid new player", s2, "player4", &data.PlayerLevelStats{1, 0, 1, 99}, http.StatusOK, "application/json", &data.PlayerStats{
+			[]data.PlayerLevelStats{
 				{1, 0, 1, 99},
 			},
 		}},
-		{"valid existing player", s2, "player5", &types.PlayerLevelStats{3, 1, 0, 3}, http.StatusOK, "application/json", &types.PlayerStats{
-			[]types.PlayerLevelStats{
+		{"valid existing player", s2, "player5", &data.PlayerLevelStats{3, 1, 0, 3}, http.StatusOK, "application/json", &data.PlayerStats{
+			[]data.PlayerLevelStats{
 				{1, 2, 3, 1},
 				{2, 1, 4, 2},
 				{3, 1, 1, 3},
@@ -225,7 +224,7 @@ func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			buf := &bytes.Buffer{}
-			reqBody := &types.PlayerIDLevelStats{PlayerID: test.playerID, LevelStatsDelta: *test.lvlStats}
+			reqBody := &PlayerIDLevelStats{PlayerID: test.playerID, LevelStatsDelta: *test.lvlStats}
 			err2 := json.NewEncoder(buf).Encode(reqBody)
 			if err2 != nil {
 				t.Fatal("could not encode the request body: " + err2.Error())
@@ -249,7 +248,7 @@ func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &types.PlayerStats{}
+				gotResponseBody := &data.PlayerStats{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")

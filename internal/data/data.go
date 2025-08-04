@@ -5,7 +5,6 @@ package data
 import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/types"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,12 +31,45 @@ func (err playerStatsNotFoundErr) Error() string {
 	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB \n", err.playerID)
 }
 
+// Data storage related structs (used by other services as well):
+
+// PlayerData stores player related live data like level, energy etc.
+// (used in read/write requests to this service, also used as
+// the response struct for client requests to the profile service)
+type PlayerData struct {
+	PlayerID       string `json:"playerID"`
+	Level          int32  `json:"level"`
+	Energy         int32  `json:"energy"`
+	LastUpdateTime int64  `json:"lastUpdateTime"`
+}
+
+// PlayerLevelStats store historical stats are for a given level for a given player
+type PlayerLevelStats struct {
+	Level     int32 `json:"level"`
+	WinCount  int32 `json:"winCount"`
+	LossCount int32 `json:"lossCount"`
+	BestScore int32 `json:"bestScore"`
+}
+
+// PlayerStats are for all levels for a given player
+// (used in read requests to this service)
+type PlayerStats struct {
+	LevelStats []PlayerLevelStats `json:"levelStats"`
+}
+
+// PlayerStatsWithID is used as the client response for the public get stats api
+// and as the request body for the internal request to the data service to write stats to the DB
+type PlayerStatsWithID struct {
+	PlayerID    string      `json:"playerID"`
+	PlayerStats PlayerStats `json:"playerStats"`
+}
+
 // Server is the core data service provider
 type Server struct {
-	playersDB    map[string]types.PlayerData
+	playersDB    map[string]PlayerData
 	playersMutex sync.Mutex
 
-	statsDB    map[string]types.PlayerStats
+	statsDB    map[string]PlayerStats
 	statsMutex sync.Mutex
 
 	logger *log.Logger
@@ -47,10 +79,10 @@ type Server struct {
 func NewDataServer() *Server {
 
 	ds := &Server{
-		playersDB:    map[string]types.PlayerData{},
+		playersDB:    map[string]PlayerData{},
 		playersMutex: sync.Mutex{},
 
-		statsDB:    map[string]types.PlayerStats{},
+		statsDB:    map[string]PlayerStats{},
 		statsMutex: sync.Mutex{},
 
 		logger: log.New(os.Stdout, "data: ", log.Ltime|log.LUTC|log.Lmsgprefix),
@@ -91,7 +123,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	}
 
 	// decode the request body, which should be a PlayerData struct
-	decodedReq := &types.PlayerData{}
+	decodedReq := &PlayerData{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
@@ -162,7 +194,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	}
 
 	// decode the request body, which should be a PlayerStatsWithID struct
-	decodedReq := &types.PlayerStatsWithID{}
+	decodedReq := &PlayerStatsWithID{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)

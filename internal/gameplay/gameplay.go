@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/types"
+	"example.com/dice-game-backend/internal/data"
+	"example.com/dice-game-backend/internal/profile"
+	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"log"
@@ -26,8 +28,8 @@ type EnterLevelRequestBody struct {
 }
 
 type EnterLevelResponse struct {
-	AccessGranted bool             `json:"accessGranted"`
-	Player        types.PlayerData `json:"playerData"`
+	AccessGranted bool            `json:"accessGranted"`
+	Player        data.PlayerData `json:"playerData"`
 }
 
 type LevelResultRequestBody struct {
@@ -44,9 +46,9 @@ type LevelResult struct {
 }
 
 type LevelResultResponse struct {
-	LevelResult LevelResult       `json:"levelResult"`
-	Player      types.PlayerData  `json:"playerData"`
-	Stats       types.PlayerStats `json:"statsData"`
+	LevelResult LevelResult      `json:"levelResult"`
+	Player      data.PlayerData  `json:"playerData"`
+	Stats       data.PlayerStats `json:"statsData"`
 }
 
 // Server is the core gameplay service provider
@@ -229,7 +231,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// update stats entry for this level (update win count, loss count, best score if better)
-	newStatsDelta := &types.PlayerLevelStats{
+	newStatsDelta := &data.PlayerLevelStats{
 		Level:     request.Level,
 		WinCount:  0,
 		LossCount: 0,
@@ -266,7 +268,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 }
 
 // getPlayerFromProfile makes an internal (server to server) request to the profile service to get the required player data
-func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*types.PlayerData, error) {
+func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*data.PlayerData, error) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -294,7 +296,7 @@ func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*type
 	}
 
 	//decode the response for the player data
-	playerData := &types.PlayerData{}
+	playerData := &data.PlayerData{}
 	err = json.NewDecoder(resp.Body).Decode(playerData)
 	if err != nil {
 		return nil, err
@@ -304,7 +306,7 @@ func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*type
 }
 
 // updatePlayerData makes an internal (server to server) request to the profile service to update the required player data
-func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel int32) (*types.PlayerData, error) {
+func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel int32) (*data.PlayerData, error) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -312,7 +314,7 @@ func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel 
 
 	// create the request body
 	reqBody := &bytes.Buffer{}
-	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelEnergy{
+	err := json.NewEncoder(reqBody).Encode(&profile.PlayerIDLevelEnergy{
 		PlayerID:    playerID,
 		Level:       newLevel,
 		EnergyDelta: energyDelta,
@@ -342,7 +344,7 @@ func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel 
 	}
 
 	//decode the response for the player data
-	playerData := &types.PlayerData{}
+	playerData := &data.PlayerData{}
 	err = json.NewDecoder(resp.Body).Decode(playerData)
 	if err != nil {
 		return nil, err
@@ -352,7 +354,7 @@ func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel 
 }
 
 // returnUpdatedPlayerStats makes an internal (server to server) request to the stats service to update the required player stats
-func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *types.PlayerLevelStats) (*types.PlayerStats, error) {
+func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *data.PlayerLevelStats) (*data.PlayerStats, error) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -360,7 +362,7 @@ func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *types
 
 	// create the request body
 	reqBody := &bytes.Buffer{}
-	err := json.NewEncoder(reqBody).Encode(&types.PlayerIDLevelStats{
+	err := json.NewEncoder(reqBody).Encode(&stats.PlayerIDLevelStats{
 		PlayerID:        playerID,
 		LevelStatsDelta: *newStatsDelta,
 	})
@@ -389,7 +391,7 @@ func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *types
 	}
 
 	//decode the response for the player stats
-	playerStats := &types.PlayerStats{}
+	playerStats := &data.PlayerStats{}
 	err = json.NewDecoder(resp.Body).Decode(playerStats)
 	if err != nil {
 		return nil, err
