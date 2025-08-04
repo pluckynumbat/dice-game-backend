@@ -71,7 +71,7 @@ func main() {
 	profileServer := profile.NewServer(rv)
 	go profileServer.Run(constants.ProfileServerPort)
 
-	statsServer := stats.NewStatsServer(rv)
+	statsServer := stats.NewServer(rv)
 	go statsServer.Run(constants.StatsServerPort)
 
 	gameplayServer := gameplay.NewGameplayServer(rv)
