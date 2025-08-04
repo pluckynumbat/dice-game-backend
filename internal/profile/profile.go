@@ -25,7 +25,7 @@ type playerNotFoundErr struct {
 }
 
 func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
+	return fmt.Sprintf("player with id: %v was not found", err.playerID)
 }
 
 // Profile structs (not used in data storage):
@@ -57,8 +57,8 @@ type Server struct {
 	logger *log.Logger
 }
 
-// NewProfileServer returns an initialized pointer to the profile server
-func NewProfileServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the profile server
+func NewServer(rv validation.RequestValidator) *Server {
 
 	ps := &Server{
 		playersMutex: sync.Mutex{},
@@ -106,7 +106,9 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	err := ps.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -114,7 +116,9 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	decodedReq := &NewPlayerRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode player id: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not decode player id: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -133,7 +137,9 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	// so successful get here means failure for us!
 	_, err = ps.readPlayerFromDB(decodedReq.PlayerID)
 	if err == nil {
-		http.Error(w, "player exists already", http.StatusBadRequest)
+		errMsg := "error: player exists already"
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -142,7 +148,9 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	// tell the data service to store the new player in the player DB
 	err = ps.writePlayerToDB(newPlayer)
 	if err != nil {
-		http.Error(w, "DB write error: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "DB write error: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -150,7 +158,9 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(newPlayer)
 	if err != nil {
-		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode player data: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -165,7 +175,9 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	err := ps.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -175,7 +187,9 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 
 	player, err := ps.GetPlayer(id)
 	if err != nil {
-		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
+		errMsg := "get player error: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -183,7 +197,9 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(player)
 	if err != nil {
-		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode player data: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -268,7 +284,9 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	decodedReq := &PlayerIDLevelEnergy{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not decode request body: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -277,7 +295,9 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	// try to update the player data
 	updatedPlayer, err := ps.UpdatePlayerData(decodedReq.PlayerID, decodedReq.EnergyDelta, decodedReq.Level)
 	if err != nil {
-		http.Error(w, "could not update player data: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not update player data: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -285,7 +305,9 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(updatedPlayer)
 	if err != nil {
-		http.Error(w, "could not encode updated player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode updated player data: " + err.Error()
+		ps.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -346,7 +368,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*data.PlayerData, error) {
 		if resp.StatusCode == http.StatusBadRequest {
 			return nil, playerNotFoundErr{playerID}
 		} else {
-			return nil, fmt.Errorf("internal read player request was not successful, status code %v \n", resp.StatusCode)
+			return nil, fmt.Errorf("internal read player request was not successful, status code %v", resp.StatusCode)
 		}
 	}
 
@@ -391,7 +413,7 @@ func (ps *Server) writePlayerToDB(player *data.PlayerData) error {
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("internal write player request was not successful, status code %v \n", resp.StatusCode)
+		return fmt.Errorf("internal write player request was not successful, status code %v", resp.StatusCode)
 	}
 
 	return nil

@@ -23,6 +23,6 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 
 func main() {
 	fmt.Println("starting the gameplay server...")
-	gameplayServer := gameplay.NewGameplayServer(&requestValidator{})
+	gameplayServer := gameplay.NewServer(&requestValidator{})
 	gameplayServer.Run(constants.GameplayServerPort)
 }

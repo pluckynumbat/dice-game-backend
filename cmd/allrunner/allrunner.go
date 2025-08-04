@@ -68,13 +68,13 @@ func main() {
 	configServer := config.NewServer(rv)
 	go configServer.Run(constants.ConfigServerPort)
 
-	profileServer := profile.NewProfileServer(rv)
+	profileServer := profile.NewServer(rv)
 	go profileServer.Run(constants.ProfileServerPort)
 
-	statsServer := stats.NewStatsServer(rv)
+	statsServer := stats.NewServer(rv)
 	go statsServer.Run(constants.StatsServerPort)
 
-	gameplayServer := gameplay.NewGameplayServer(rv)
+	gameplayServer := gameplay.NewServer(rv)
 	go gameplayServer.Run(constants.GameplayServerPort)
 
 	time.Sleep(500 * time.Millisecond) // wait some time so that the following instructions to exit the loop are on the last line

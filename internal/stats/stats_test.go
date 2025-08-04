@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 func TestNewStatsServer(t *testing.T) {
 
 	authServer := auth.NewServer()
-	statsServer := NewStatsServer(authServer)
+	statsServer := NewServer(authServer)
 
 	if statsServer == nil {
 		t.Fatal("new stats server should not return a nil server pointer")
@@ -41,7 +41,7 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 	var s1, s2 *Server
 
 	authServer := auth.NewServer()
-	s2 = NewStatsServer(authServer)
+	s2 = NewServer(authServer)
 
 	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"data", data.PlayerStats{nil}})
 	if err != nil {
@@ -109,7 +109,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	s2 = NewStatsServer(as)
+	s2 = NewServer(as)
 
 	err = s2.writeStatsToDB(&data.PlayerStatsWithID{"player2", data.PlayerStats{[]data.PlayerLevelStats{
 		{1, 2, 3, 1},
@@ -179,7 +179,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 
 func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 
-	s2 := NewStatsServer(auth.NewServer())
+	s2 := NewServer(auth.NewServer())
 
 	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"player4", data.PlayerStats{nil}})
 	if err != nil {

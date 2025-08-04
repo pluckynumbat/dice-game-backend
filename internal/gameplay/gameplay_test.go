@@ -28,10 +28,10 @@ func TestMain(m *testing.M) {
 	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
-	profileServer = profile.NewProfileServer(authServer)
+	profileServer = profile.NewServer(authServer)
 	go profileServer.Run(constants.ProfileServerPort)
 
-	statsServer := stats.NewStatsServer(authServer)
+	statsServer := stats.NewServer(authServer)
 	go statsServer.Run(constants.StatsServerPort)
 
 	code := m.Run()
@@ -43,7 +43,7 @@ func TestNewGameplayServer(t *testing.T) {
 
 	as := auth.NewServer()
 
-	gs := NewGameplayServer(as)
+	gs := NewServer(as)
 
 	if gs == nil {
 		t.Fatal("new profile server should not return a nil server pointer")
@@ -63,7 +63,7 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 	}
 	energyCost := config.Config.Levels[0].EnergyCost
 
-	gs := NewGameplayServer(authServer)
+	gs := NewServer(authServer)
 
 	tests := []struct {
 		name             string
@@ -147,7 +147,7 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 
 	energyReward := config.Config.Levels[0].EnergyReward
 
-	gs := NewGameplayServer(authServer)
+	gs := NewServer(authServer)
 
 	tests := []struct {
 		name             string

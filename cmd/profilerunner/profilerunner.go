@@ -23,6 +23,6 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 
 func main() {
 	fmt.Println("starting the profile server...")
-	profileServer := profile.NewProfileServer(&requestValidator{})
+	profileServer := profile.NewServer(&requestValidator{})
 	profileServer.Run(constants.ProfileServerPort)
 }
