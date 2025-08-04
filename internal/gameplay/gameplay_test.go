@@ -10,7 +10,6 @@ import (
 	"example.com/dice-game-backend/internal/profile"
 	"example.com/dice-game-backend/internal/stats"
 	"example.com/dice-game-backend/internal/testsetup"
-	"example.com/dice-game-backend/internal/types"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -83,7 +82,7 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		{"locked level", gs, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusOK, "application/json", &EnterLevelResponse{false, *newPlayerData}},
 		{name: "valid level", server: gs, sessionID: sID, requestBody: &EnterLevelRequestBody{"player2", 1}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &EnterLevelResponse{
 			AccessGranted: true,
-			Player: types.PlayerData{
+			Player: data.PlayerData{
 				PlayerID:       newPlayerData.PlayerID,
 				Level:          newPlayerData.Level,
 				Energy:         newPlayerData.Energy - energyCost,
@@ -171,12 +170,12 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		{name: "level loss", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player3", 1, []int32{1, 1}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
 			LevelResult: LevelResult{false, 0, false},
 			Player:      *newPlayer3,
-			Stats:       types.PlayerStats{LevelStats: []types.PlayerLevelStats{{1, 0, 1, 99}}},
+			Stats:       data.PlayerStats{LevelStats: []data.PlayerLevelStats{{1, 0, 1, 99}}},
 		}},
 		{name: "level win", server: gs, sessionID: sID, requestBody: &LevelResultRequestBody{"player3", 1, []int32{1, 6}}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &LevelResultResponse{
 			LevelResult: LevelResult{true, energyReward, true},
-			Player:      types.PlayerData{PlayerID: newPlayer3.PlayerID, Level: newPlayer3.Level + 1, Energy: 50, LastUpdateTime: newPlayer3.LastUpdateTime},
-			Stats:       types.PlayerStats{LevelStats: []types.PlayerLevelStats{{1, 1, 1, 2}}},
+			Player:      data.PlayerData{PlayerID: newPlayer3.PlayerID, Level: newPlayer3.Level + 1, Energy: 50, LastUpdateTime: newPlayer3.LastUpdateTime},
+			Stats:       data.PlayerStats{LevelStats: []data.PlayerLevelStats{{1, 1, 1, 2}}},
 		}},
 	}
 
@@ -223,9 +222,9 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 	}
 }
 
-func setupTestProfile(playerID string, sessionID string, profileServer *profile.Server) (*types.PlayerData, error) {
+func setupTestProfile(playerID string, sessionID string, profileServer *profile.Server) (*data.PlayerData, error) {
 	buf := &bytes.Buffer{}
-	reqBody := &types.NewPlayerRequestBody{PlayerID: playerID}
+	reqBody := &profile.NewPlayerRequestBody{PlayerID: playerID}
 	err := json.NewEncoder(buf).Encode(reqBody)
 	if err != nil {
 		return nil, err
@@ -237,7 +236,7 @@ func setupTestProfile(playerID string, sessionID string, profileServer *profile.
 
 	profileServer.HandleNewPlayerRequest(respRec, newReq)
 
-	newPlayerData := &types.PlayerData{}
+	newPlayerData := &data.PlayerData{}
 	err = json.NewDecoder(respRec.Result().Body).Decode(newPlayerData)
 	if err != nil {
 		return nil, err
