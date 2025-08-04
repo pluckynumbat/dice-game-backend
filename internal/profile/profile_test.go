@@ -55,7 +55,7 @@ func TestServer_GetPlayer(t *testing.T) {
 		expError   error
 	}{
 		{"nil server", nil, "", nil, serverNilError},
-		{"invalid player", ps, "player1", nil, playerNotFoundErr{"player1"}},
+		{"invalid player", ps, "player1", nil, data.PlayerNotFoundErr{"player1"}},
 		{"valid player", ps, "player2", &data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
 		{"valid player, restore energy", ps, "player2", &data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
 	}
@@ -107,7 +107,7 @@ func TestServer_UpdatePlayerData(t *testing.T) {
 		expError    error
 	}{
 		{"nil server", nil, "", 0, 0, nil, serverNilError},
-		{"invalid player", ps, "player1", 0, 0, nil, playerNotFoundErr{"player1"}},
+		{"invalid player", ps, "player1", 0, 0, nil, data.PlayerNotFoundErr{"player1"}},
 		{"valid player, more energy", ps, "player2", 20, 1, &data.PlayerData{"player2", 1, 40, time.Now().UTC().Unix()}, nil},
 		{"valid player, new level", ps, "player3", 10, 3, &data.PlayerData{"player3", 3, 30, time.Now().UTC().Unix()}, nil},
 		{"valid player, max energy, max level, ", ps, "player4", 100, 100, &data.PlayerData{"player4", 10, 50, time.Now().UTC().Unix()}, nil},
@@ -232,7 +232,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 		{"nil server", nil, "", "", http.StatusInternalServerError, "", nil},
 		{"blank session id", ps, "", "", http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", ps, "testSessionID", "", http.StatusUnauthorized, "application/json", nil},
-		{"new player", ps, sID, "player5", http.StatusBadRequest, "application/json", nil},
+		{"new player", ps, sID, "player5", http.StatusNotFound, "application/json", nil},
 		{"existing player", ps, sID, "player2", http.StatusOK, "application/json", &data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}},
 	}
 

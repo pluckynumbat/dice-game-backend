@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/shared/constants"
@@ -19,14 +20,6 @@ import (
 
 // Profile Specific Errors:
 var serverNilError = fmt.Errorf("provided profile server pointer is nil")
-
-type playerNotFoundErr struct {
-	playerID string
-}
-
-func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found", err.playerID)
-}
 
 // Profile structs (not used in data storage):
 
@@ -189,7 +182,11 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		errMsg := "get player error: " + err.Error()
 		ps.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		if errors.Is(err, data.PlayerNotFoundErr{PlayerID: id}) {
+			http.Error(w, errMsg, http.StatusNotFound)
+		} else {
+			http.Error(w, errMsg, http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -365,8 +362,8 @@ func (ps *Server) readPlayerFromDB(playerID string) (*data.PlayerData, error) {
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusBadRequest {
-			return nil, playerNotFoundErr{playerID}
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, data.PlayerNotFoundErr{PlayerID: playerID}
 		} else {
 			return nil, fmt.Errorf("internal read player request was not successful, status code %v", resp.StatusCode)
 		}

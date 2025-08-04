@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/shared/constants"
@@ -17,19 +18,8 @@ import (
 	"time"
 )
 
-const invalidStatusCode int32 = -1
-
 // Stats Specific Errors:
 var serverNilError = fmt.Errorf("provided stats server pointer is nil")
-
-type playerStatsNotFoundErr struct {
-	playerID string
-	level    int32
-}
-
-func (err playerStatsNotFoundErr) Error() string {
-	return fmt.Sprintf("stats entry for id: %v (level %v) is not present \n", err.playerID, err.level)
-}
 
 // Stats structs (not used in data storage):
 
@@ -106,9 +96,9 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	statsData := &data.PlayerStats{} // create the data struct for the response
 
 	// make a request to the data service to read the stats entry for the player
-	plStats, err, statusCode := ss.readStatsFromDB(id)
+	plStats, err := ss.readStatsFromDB(id)
 	if err != nil {
-		if statusCode == int32(http.StatusBadRequest) {
+		if errors.Is(err, data.PlayerStatsNotFoundErr{PlayerID: id}) {
 			// entry does not exist yet, we will just send back an empty response for stats
 		} else {
 			errMsg := "DB read error: " + err.Error()
@@ -153,9 +143,9 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *data.
 
 	// make a request to the data service to read the stats entry for the player
 	present := true // to store if there is an entry for the required player id in the stats DB
-	playerStats, err, statusCode := ss.readStatsFromDB(playerID)
+	playerStats, err := ss.readStatsFromDB(playerID)
 	if err != nil {
-		if statusCode == int32(http.StatusBadRequest) {
+		if errors.Is(err, data.PlayerStatsNotFoundErr{PlayerID: playerID}) {
 			// entry does not exist yet, this can still be a valid case (dealt with below) if the player has no stats yet
 			present = false
 		} else {
@@ -171,8 +161,8 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *data.
 				LevelStats: make([]data.PlayerLevelStats, 0, ss.defaultLevelCount),
 			}
 		} else {
-			// return an error
-			return nil, playerStatsNotFoundErr{playerID, newStatsDelta.Level}
+			// forward the error from above
+			return nil, err
 		}
 	}
 
@@ -242,7 +232,7 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 }
 
 // readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
-func (ss *Server) readStatsFromDB(playerID string) (*data.PlayerStats, error, int32) {
+func (ss *Server) readStatsFromDB(playerID string) (*data.PlayerStats, error) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -252,30 +242,34 @@ func (ss *Server) readStatsFromDB(playerID string) (*data.PlayerStats, error, in
 	reqURL := fmt.Sprintf("http://:%v/data/stats-internal/%v", constants.DataServerPort, playerID)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
-		return nil, err, invalidStatusCode
+		return nil, err
 	}
 
 	// send the request
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err, invalidStatusCode
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// check response status
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("internal read stats request was not successful, status code: %v", resp.StatusCode), int32(resp.StatusCode)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, data.PlayerStatsNotFoundErr{PlayerID: playerID}
+		} else {
+			return nil, fmt.Errorf("internal read stats request was not successful, status code %v", resp.StatusCode)
+		}
 	}
 
 	//decode the response for the player data
 	playerStats := &data.PlayerStats{}
 	err = json.NewDecoder(resp.Body).Decode(playerStats)
 	if err != nil {
-		return nil, err, invalidStatusCode
+		return nil, err
 	}
 
-	return playerStats, nil, invalidStatusCode
+	return playerStats, nil
 }
 
 // writeStatsToDB makes an internal (server to server) request to the data service to write the required player's stats entries

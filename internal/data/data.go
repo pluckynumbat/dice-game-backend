@@ -12,23 +12,23 @@ import (
 	"sync"
 )
 
-// Data service Specific Errors:
+// Data service related errors (used by other services as well):
 var serverNilError = fmt.Errorf("provided data server pointer is nil")
 
-type playerNotFoundErr struct {
-	playerID string
+type PlayerNotFoundErr struct {
+	PlayerID string
 }
 
-func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found in the player DB", err.playerID)
+func (err PlayerNotFoundErr) Error() string {
+	return fmt.Sprintf("player with id: %v was not found in the players DB", err.PlayerID)
 }
 
-type playerStatsNotFoundErr struct {
-	playerID string
+type PlayerStatsNotFoundErr struct {
+	PlayerID string
 }
 
-func (err playerStatsNotFoundErr) Error() string {
-	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB", err.playerID)
+func (err PlayerStatsNotFoundErr) Error() string {
+	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB", err.PlayerID)
 }
 
 // Data storage related structs (used by other services as well):
@@ -177,10 +177,10 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	// fetch the entry (if present) from the database
 	player, ok := ds.playersDB[id]
 	if !ok {
-		notFoundErr := playerNotFoundErr{id}
+		notFoundErr := PlayerNotFoundErr{id}
 		errMsg := notFoundErr.Error()
 		ds.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusNotFound)
 		return
 	}
 
@@ -258,10 +258,10 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	// fetch the entry (if present) from the database
 	plStats, ok := ds.statsDB[id]
 	if !ok {
-		notFoundErr := playerStatsNotFoundErr{id}
+		notFoundErr := PlayerStatsNotFoundErr{id}
 		errMsg := notFoundErr.Error()
 		ds.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusNotFound)
 		return
 	}
 
