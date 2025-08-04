@@ -62,7 +62,7 @@ func main() {
 	authServer := auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	configServer := config.NewConfigServer(rv)
