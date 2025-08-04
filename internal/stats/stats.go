@@ -51,8 +51,8 @@ type Server struct {
 	logger *log.Logger
 }
 
-// NewStatsServer returns an initialized pointer to the stats server
-func NewStatsServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the stats server
+func NewServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		statsMutex: sync.Mutex{},
 
