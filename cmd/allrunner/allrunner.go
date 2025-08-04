@@ -59,7 +59,7 @@ func main() {
 
 	rv := &requestValidator{}
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
 	dataServer := data.NewDataServer()
