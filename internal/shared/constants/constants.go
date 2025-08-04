@@ -1,6 +1,7 @@
 // Package constants has constants shared by the different packages
 package constants
 
+const CommonProtocol = "http"
 const CommonHost = ""
 
 const AuthServerPort = "10101"
