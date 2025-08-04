@@ -122,7 +122,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		errMsg := "get player error: " + err.Error()
 		gs.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -200,7 +200,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		errMsg := "get player error: " + err.Error()
 		gs.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
