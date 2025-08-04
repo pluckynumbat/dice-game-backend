@@ -14,7 +14,7 @@ import (
 )
 
 func TestNewAuthServer(t *testing.T) {
-	authServer := NewAuthServer()
+	authServer := NewServer()
 
 	if authServer == nil {
 		t.Fatal("new auth server should not return a nil server pointer")
@@ -39,7 +39,7 @@ func TestNewAuthServer(t *testing.T) {
 
 func TestServer_HandleLoginRequest(t *testing.T) {
 
-	as := NewAuthServer()
+	as := NewServer()
 
 	as.credentials["test2"] = "pass2"
 	as.credentials["test3"] = "pass3"
@@ -173,7 +173,7 @@ func TestServer_HandleLogoutRequest(t *testing.T) {
 
 func TestServer_ValidateRequest(t *testing.T) {
 
-	as := NewAuthServer()
+	as := NewServer()
 	as.sessions["testsessionid3"] = &SessionData{
 		PlayerID:       "",
 		SessionID:      "testsessionid3",
@@ -216,7 +216,7 @@ func TestServer_ValidateRequest(t *testing.T) {
 }
 
 func TestServer_ValidateRequestHandler(t *testing.T) {
-	as := NewAuthServer()
+	as := NewServer()
 	as.sessions["testsessionid3"] = &SessionData{
 		PlayerID:       "",
 		SessionID:      "testsessionid3",
@@ -271,7 +271,7 @@ func TestServer_ValidateRequestHandler(t *testing.T) {
 
 func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 
-	as1 := NewAuthServer()
+	as1 := NewServer()
 	as1.sessions["sessionID1"] = &SessionData{
 		PlayerID:       "playerID1",
 		SessionID:      "sessionID1",
@@ -279,7 +279,7 @@ func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 	}
 	as1.activePlayerIDs["playerID1"] = "sessionID1"
 
-	as2 := NewAuthServer()
+	as2 := NewServer()
 	as2.sessions["sessionID2"] = &SessionData{
 		PlayerID:       "playerID2",
 		SessionID:      "sessionID2",
@@ -296,7 +296,7 @@ func TestServer_StartPeriodicSessionSweep(t *testing.T) {
 		wantActivePlayerIDs map[string]string
 	}{
 		{"stale session", as1, 25 * time.Millisecond, 5, map[string]*SessionData{}, map[string]string{}},
-		{"active session", as2, 25 * time.Millisecond, 20, map[string]*SessionData{"sessionID2": &SessionData{"playerID2", "sessionID2", time.Now().UTC().Unix() - 10}}, map[string]string{"playerID2": "sessionID2"}},
+		{"active session", as2, 25 * time.Millisecond, 20, map[string]*SessionData{"sessionID2": {"playerID2", "sessionID2", time.Now().UTC().Unix() - 10}}, map[string]string{"playerID2": "sessionID2"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -326,7 +326,7 @@ func setupTestAuth() (*Server, string, error) {
 	newAuthReq.SetBasicAuth("user1", "pass1")
 	authRespRec := httptest.NewRecorder()
 
-	as := NewAuthServer()
+	as := NewServer()
 	as.HandleLoginRequest(authRespRec, newAuthReq)
 	sID := authRespRec.Header().Get("Session-Id")
 
