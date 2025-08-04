@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 	authServer = auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	profileServer = profile.NewProfileServer(authServer)

@@ -18,7 +18,7 @@ import (
 
 func TestMain(m *testing.M) {
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	code := m.Run()
