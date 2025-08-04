@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/types"
+	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"log"
@@ -26,6 +26,21 @@ type playerNotFoundErr struct {
 
 func (err playerNotFoundErr) Error() string {
 	return fmt.Sprintf("player with id: %v was not found \n", err.playerID)
+}
+
+// Profile structs (not used in data storage):
+
+// NewPlayerRequestBody just contains the player ID
+type NewPlayerRequestBody struct {
+	PlayerID string `json:"playerID"`
+}
+
+// PlayerIDLevelEnergy is used as a request body for the internal request to
+// update players data and return them
+type PlayerIDLevelEnergy struct {
+	PlayerID    string `json:"playerID"`
+	Level       int32  `json:"level"`
+	EnergyDelta int32  `json:"energyDelta"`
 }
 
 // Server is the core profile service provider
@@ -96,7 +111,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	}
 
 	// decode the request body for the player ID
-	decodedReq := &types.NewPlayerRequestBody{}
+	decodedReq := &NewPlayerRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode player id: "+err.Error(), http.StatusInternalServerError)
@@ -104,7 +119,7 @@ func (ps *Server) HandleNewPlayerRequest(w http.ResponseWriter, r *http.Request)
 	}
 
 	// create the new player struct from the player ID
-	newPlayer := &types.PlayerData{
+	newPlayer := &data.PlayerData{
 		PlayerID:       decodedReq.PlayerID,
 		Level:          ps.defaultLevel,
 		Energy:         ps.maxEnergy,
@@ -173,7 +188,7 @@ func (ps *Server) HandlePlayerDataRequest(w http.ResponseWriter, r *http.Request
 }
 
 // GetPlayer returns the player data when requested, with updated energy from the passive regeneration
-func (ps *Server) GetPlayer(playerID string) (*types.PlayerData, error) {
+func (ps *Server) GetPlayer(playerID string) (*data.PlayerData, error) {
 
 	if ps == nil {
 		return nil, serverNilError
@@ -205,7 +220,7 @@ func (ps *Server) GetPlayer(playerID string) (*types.PlayerData, error) {
 
 // UpdatePlayerData will first apply passive energy regeneration to the player,
 // then apply the given energy delta, and finally change the level of the player if needed
-func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*types.PlayerData, error) {
+func (ps *Server) UpdatePlayerData(playerID string, energyDelta int32, newLevel int32) (*data.PlayerData, error) {
 
 	if ps == nil {
 		return nil, serverNilError
@@ -250,7 +265,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	// decode the request body, which should be a PlayerIDLevelEnergy struct
-	decodedReq := &types.PlayerIDLevelEnergy{}
+	decodedReq := &PlayerIDLevelEnergy{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
@@ -277,7 +292,7 @@ func (ps *Server) HandleUpdatePlayerRequest(w http.ResponseWriter, r *http.Reque
 // updateEnergy will update energy values of the given player:
 // first it will update (possibly stale) energy based on passive energy regeneration
 // then it will update it based on the provided energy delta
-func (ps *Server) updateEnergy(player *types.PlayerData, newEnergyDelta int32) error {
+func (ps *Server) updateEnergy(player *data.PlayerData, newEnergyDelta int32) error {
 
 	if player == nil {
 		return fmt.Errorf("nil player data pointer")
@@ -305,7 +320,7 @@ func (ps *Server) updateEnergy(player *types.PlayerData, newEnergyDelta int32) e
 }
 
 // readPlayerFromDB makes an internal (server to server) request to the data service to read the required player
-func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
+func (ps *Server) readPlayerFromDB(playerID string) (*data.PlayerData, error) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -336,7 +351,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 	}
 
 	//decode the response for the player data
-	playerData := &types.PlayerData{}
+	playerData := &data.PlayerData{}
 	err = json.NewDecoder(resp.Body).Decode(playerData)
 	if err != nil {
 		return nil, err
@@ -346,7 +361,7 @@ func (ps *Server) readPlayerFromDB(playerID string) (*types.PlayerData, error) {
 }
 
 // writePlayerToDB makes an internal (server to server) request to the data service to write the required player entry
-func (ps *Server) writePlayerToDB(player *types.PlayerData) error {
+func (ps *Server) writePlayerToDB(player *data.PlayerData) error {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
