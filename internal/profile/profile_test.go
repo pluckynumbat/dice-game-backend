@@ -8,7 +8,6 @@ import (
 	"example.com/dice-game-backend/internal/constants"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/testsetup"
-	"example.com/dice-game-backend/internal/types"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +42,7 @@ func TestServer_GetPlayer(t *testing.T) {
 	authServer := auth.NewAuthServer()
 	ps := NewProfileServer(authServer)
 
-	err := ps.writePlayerToDB(&types.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()})
+	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
@@ -52,13 +51,13 @@ func TestServer_GetPlayer(t *testing.T) {
 		name       string
 		server     *Server
 		playerID   string
-		wantPlayer *types.PlayerData
+		wantPlayer *data.PlayerData
 		expError   error
 	}{
 		{"nil server", nil, "", nil, serverNilError},
 		{"invalid player", ps, "player1", nil, playerNotFoundErr{"player1"}},
-		{"valid player", ps, "player2", &types.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
-		{"valid player, restore energy", ps, "player2", &types.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
+		{"valid player", ps, "player2", &data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
+		{"valid player, restore energy", ps, "player2", &data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()}, nil},
 	}
 
 	for _, test := range tests {
@@ -85,15 +84,15 @@ func TestServer_UpdatePlayerData(t *testing.T) {
 	authServer := auth.NewAuthServer()
 	ps := NewProfileServer(authServer)
 
-	err := ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
+	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
-	err = ps.writePlayerToDB(&types.PlayerData{"player3", 2, 20, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player3", 2, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
-	err = ps.writePlayerToDB(&types.PlayerData{"player4", 10, 50, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player4", 10, 50, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
@@ -104,14 +103,14 @@ func TestServer_UpdatePlayerData(t *testing.T) {
 		playerID    string
 		energyDelta int32
 		newLevel    int32
-		wantPlayer  *types.PlayerData
+		wantPlayer  *data.PlayerData
 		expError    error
 	}{
 		{"nil server", nil, "", 0, 0, nil, serverNilError},
 		{"invalid player", ps, "player1", 0, 0, nil, playerNotFoundErr{"player1"}},
-		{"valid player, more energy", ps, "player2", 20, 1, &types.PlayerData{"player2", 1, 40, time.Now().UTC().Unix()}, nil},
-		{"valid player, new level", ps, "player3", 10, 3, &types.PlayerData{"player3", 3, 30, time.Now().UTC().Unix()}, nil},
-		{"valid player, max energy, max level, ", ps, "player4", 100, 100, &types.PlayerData{"player4", 10, 50, time.Now().UTC().Unix()}, nil},
+		{"valid player, more energy", ps, "player2", 20, 1, &data.PlayerData{"player2", 1, 40, time.Now().UTC().Unix()}, nil},
+		{"valid player, new level", ps, "player3", 10, 3, &data.PlayerData{"player3", 3, 30, time.Now().UTC().Unix()}, nil},
+		{"valid player, max energy, max level, ", ps, "player4", 100, 100, &data.PlayerData{"player4", 10, 50, time.Now().UTC().Unix()}, nil},
 	}
 
 	for _, test := range tests {
@@ -142,7 +141,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 
 	ps := NewProfileServer(as)
 
-	err = ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
@@ -154,12 +153,12 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *types.PlayerData
+		wantResponseBody *data.PlayerData
 	}{
 		{"nil server", nil, "", "", http.StatusInternalServerError, "", nil},
 		{"blank session id", ps, "", "", http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", ps, "testSessionID", "", http.StatusUnauthorized, "application/json", nil},
-		{"new player", ps, sID, "player1", http.StatusOK, "application/json", &types.PlayerData{"player1", 1, 50, time.Now().UTC().Unix()}},
+		{"new player", ps, sID, "player1", http.StatusOK, "application/json", &data.PlayerData{"player1", 1, 50, time.Now().UTC().Unix()}},
 		{"existing player", ps, sID, "player2", http.StatusBadRequest, "application/json", nil},
 	}
 
@@ -167,7 +166,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 
 			buf := &bytes.Buffer{}
-			reqBody := &types.NewPlayerRequestBody{test.playerID}
+			reqBody := &NewPlayerRequestBody{test.playerID}
 			err2 := json.NewEncoder(buf).Encode(reqBody)
 			if err2 != nil {
 				t.Fatal("could not encode the request body: " + err2.Error())
@@ -193,7 +192,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &types.PlayerData{}
+				gotResponseBody := &data.PlayerData{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
@@ -216,7 +215,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 
 	ps := NewProfileServer(as)
 
-	err = ps.writePlayerToDB(&types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
@@ -228,13 +227,13 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 		playerID         string
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *types.PlayerData
+		wantResponseBody *data.PlayerData
 	}{
 		{"nil server", nil, "", "", http.StatusInternalServerError, "", nil},
 		{"blank session id", ps, "", "", http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", ps, "testSessionID", "", http.StatusUnauthorized, "application/json", nil},
 		{"new player", ps, sID, "player5", http.StatusBadRequest, "application/json", nil},
-		{"existing player", ps, sID, "player2", http.StatusOK, "application/json", &types.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}},
+		{"existing player", ps, sID, "player2", http.StatusOK, "application/json", &data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()}},
 	}
 
 	for _, test := range tests {
@@ -261,7 +260,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &types.PlayerData{}
+				gotResponseBody := &data.PlayerData{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
@@ -280,15 +279,15 @@ func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
 	authServer := auth.NewAuthServer()
 	ps := NewProfileServer(authServer)
 
-	err := ps.writePlayerToDB(&types.PlayerData{"player8", 1, 20, time.Now().UTC().Unix()})
+	err := ps.writePlayerToDB(&data.PlayerData{"player8", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
-	err = ps.writePlayerToDB(&types.PlayerData{"player9", 2, 20, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player9", 2, 20, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
-	err = ps.writePlayerToDB(&types.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()})
+	err = ps.writePlayerToDB(&data.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()})
 	if err != nil {
 		t.Fatalf("%v \n", err.Error())
 	}
@@ -301,20 +300,20 @@ func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
 		newLevel         int32
 		wantStatus       int
 		wantContentType  string
-		wantResponseBody *types.PlayerData
+		wantResponseBody *data.PlayerData
 	}{
 		{"nil server", nil, "", 0, 0, http.StatusInternalServerError, "", nil},
 		{"invalid player", ps, "player7", 0, 0, http.StatusBadRequest, "", nil},
-		{"valid player, more energy", ps, "player8", 20, 1, http.StatusOK, "application/json", &types.PlayerData{"player8", 1, 40, time.Now().UTC().Unix()}},
-		{"valid player, new level", ps, "player9", 10, 3, http.StatusOK, "application/json", &types.PlayerData{"player9", 3, 30, time.Now().UTC().Unix()}},
-		{"valid player, max energy, max level, ", ps, "player10", 100, 100, http.StatusOK, "application/json", &types.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()}},
+		{"valid player, more energy", ps, "player8", 20, 1, http.StatusOK, "application/json", &data.PlayerData{"player8", 1, 40, time.Now().UTC().Unix()}},
+		{"valid player, new level", ps, "player9", 10, 3, http.StatusOK, "application/json", &data.PlayerData{"player9", 3, 30, time.Now().UTC().Unix()}},
+		{"valid player, max energy, max level, ", ps, "player10", 100, 100, http.StatusOK, "application/json", &data.PlayerData{"player10", 10, 50, time.Now().UTC().Unix()}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
 			buf := &bytes.Buffer{}
-			reqBody := &types.PlayerIDLevelEnergy{test.playerID, test.newLevel, test.energyDelta}
+			reqBody := &PlayerIDLevelEnergy{test.playerID, test.newLevel, test.energyDelta}
 			err2 := json.NewEncoder(buf).Encode(reqBody)
 			if err2 != nil {
 				t.Fatal("could not encode the request body: " + err2.Error())
@@ -339,7 +338,7 @@ func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
 					t.Errorf("handler gave incorrect results, want: %v, got: %v", test.wantContentType, gotContentType)
 				}
 
-				gotResponseBody := &types.PlayerData{}
+				gotResponseBody := &data.PlayerData{}
 				err = json.NewDecoder(respRec.Result().Body).Decode(gotResponseBody)
 				if err != nil {
 					t.Fatal("could not decode the response body")
