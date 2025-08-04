@@ -31,6 +31,51 @@ func TestBasicConfigValidation(t *testing.T) {
 	if len(Config.Levels) == 0 {
 		t.Fatal("config should not contain a game config with empty levels")
 	}
+
+	// additional value checks
+	if Config.DefaultLevel <= 0 {
+		t.Errorf("invalid default level in the config: %v, value should be greater than 0", Config.DefaultLevel)
+	}
+
+	levelCount := int32(len(Config.Levels))
+	if Config.DefaultLevel > levelCount {
+		t.Errorf("invalid default level in the config: %v, value cannot be greater than level count (%v)", Config.DefaultLevel, levelCount)
+	}
+
+	if Config.MaxEnergy <= 0 {
+		t.Errorf("invalid maximum energy in the config: %v, value should be greater than 0", Config.MaxEnergy)
+	}
+
+	if Config.EnergyRegenSeconds <= 0 {
+		t.Errorf("invalid energy regeneration seconds in the config: %v, value should be greater than 0", Config.EnergyRegenSeconds)
+	}
+
+	// per level checks
+	for _, val := range Config.Levels {
+		if val.EnergyCost <= 0 {
+			t.Errorf("invalid energy cost for level %v in the config: %v, value should be greater than 0", val.Level, val.EnergyCost)
+		}
+
+		if val.EnergyCost > Config.MaxEnergy {
+			t.Errorf("invalid energy cost for level %v in the config: %v, value should be less than player's maximum energy (%v)", val.Level, val.EnergyCost, Config.MaxEnergy)
+		}
+
+		if val.TotalRolls <= 0 {
+			t.Errorf("invalid total rolls for level %v in the config: %v, value should be greater than 0", val.Level, val.TotalRolls)
+		}
+
+		if val.Target < 1 || val.Target > 6 {
+			t.Errorf("invalid target for level %v in the config: %v, value should be between 1 and 6", val.Level, val.Target)
+		}
+
+		if val.EnergyReward <= 0 {
+			t.Errorf("invalid energy cost for level %v in the config: %v, value should be greater than 0", val.Level, val.EnergyReward)
+		}
+
+		if val.EnergyReward > Config.MaxEnergy {
+			t.Errorf("invalid energy reward for level %v in the config: %v, value should be less than player's maximum energy (%v)", val.Level, val.EnergyReward, Config.MaxEnergy)
+		}
+	}
 }
 
 func TestHandleConfigRequest(t *testing.T) {
