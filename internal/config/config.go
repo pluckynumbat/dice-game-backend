@@ -33,8 +33,8 @@ type Server struct {
 	logger           *log.Logger
 }
 
-// NewConfigServer returns an initialized pointer to the config server
-func NewConfigServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the config server
+func NewServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		requestValidator: rv,
 		logger:           log.New(os.Stdout, "config: ", log.Ltime|log.LUTC|log.Lmsgprefix),
