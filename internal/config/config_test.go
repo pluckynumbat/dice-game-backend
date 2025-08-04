@@ -12,7 +12,7 @@ import (
 
 func TestNewConfigServer(t *testing.T) {
 
-	configServer := NewConfigServer(auth.NewAuthServer())
+	configServer := NewConfigServer(auth.NewServer())
 
 	if configServer == nil {
 		t.Fatal("new config server should not return a nil server pointer")
