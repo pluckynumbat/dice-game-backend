@@ -91,7 +91,9 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -99,7 +101,9 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	entryRequest := &EnterLevelRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(entryRequest)
 	if err != nil {
-		http.Error(w, "could not decode the entry request: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not decode the entry request: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 	gs.logger.Printf("request to enter level %v by player id %v", entryRequest.Level, entryRequest.PlayerID)
@@ -107,14 +111,18 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	// get the config and the player data
 	cfg := config.Config
 	if entryRequest.Level < 0 || entryRequest.Level > int32(len(cfg.Levels)) {
-		http.Error(w, "invalid level in request", http.StatusBadRequest)
+		errMsg := "error: invalid level in request"
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	// make a request to the profile service for the player data
 	player, err := gs.getPlayerFromProfile(entryRequest.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
-		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
+		errMsg := "get player error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -136,7 +144,9 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 		// make a request to the profile service to update the player data
 		updatedPlayer, updateErr := gs.updatePlayerData(entryRequest.PlayerID, -energyCost, player.Level)
 		if updateErr != nil {
-			http.Error(w, "player error: "+updateErr.Error(), http.StatusInternalServerError)
+			errMsg := "update player error: " + updateErr.Error()
+			gs.logger.Println(errMsg)
+			http.Error(w, errMsg, http.StatusInternalServerError)
 			return
 		}
 
@@ -147,7 +157,9 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(entryResponse)
 	if err != nil {
-		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode the response: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -163,7 +175,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	err := gs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -171,7 +185,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	request := &LevelResultRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(request)
 	if err != nil {
-		http.Error(w, "could not decode the level result request: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not decode the level result request: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 	gs.logger.Printf("request for level results for level %v by player id %v", request.Level, request.PlayerID)
@@ -182,12 +198,16 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	// make a request to the profile service for the player data
 	player, err := gs.getPlayerFromProfile(request.PlayerID, r.Header.Get("Session-Id"))
 	if err != nil {
-		http.Error(w, "player error: "+err.Error(), http.StatusBadRequest)
+		errMsg := "get player error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if request.Level < 0 || request.Level > int32(len(cfg.Levels)) || request.Level > player.Level {
-		http.Error(w, "invalid level in request", http.StatusBadRequest)
+		errMsg := "error: invalid level in request"
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -197,7 +217,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	levelCount := int32(len(cfg.Levels))
 
 	if request.Rolls == nil || rollCount > levelConfig.TotalRolls {
-		http.Error(w, "invalid rolls data in request", http.StatusBadRequest)
+		errMsg := "error: invalid rolls data in request"
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -226,7 +248,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	// make a request to the profile service to update the player data
 	updatedPlayer, err := gs.updatePlayerData(request.PlayerID, energyDelta, newPlayerLevel)
 	if err != nil {
-		http.Error(w, "player error: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "update player error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -248,7 +272,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	// make a request to the stats server to update the player stats
 	updatedStats, err := gs.returnUpdatedPlayerStats(request.PlayerID, newStatsDelta)
 	if err != nil {
-		http.Error(w, "stats error: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "update stats error: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -263,7 +289,9 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		http.Error(w, "could not encode the response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode the response: " + err.Error()
+		gs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
