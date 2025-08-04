@@ -126,12 +126,16 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	decodedReq := &PlayerData{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		errMsg := "could not decode request body: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if decodedReq.PlayerID == "" {
-		http.Error(w, "cannot write an entry with a blank player id", http.StatusBadRequest)
+		errMsg := "cannot write an entry with a blank player id"
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -148,7 +152,9 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not write response: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -172,7 +178,9 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	player, ok := ds.playersDB[id]
 	if !ok {
 		notFoundErr := playerNotFoundErr{id}
-		http.Error(w, notFoundErr.Error(), http.StatusBadRequest)
+		errMsg := notFoundErr.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -180,7 +188,9 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(player)
 	if err != nil {
-		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not encode player data: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -197,12 +207,16 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	decodedReq := &PlayerStatsWithID{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		errMsg := "could not decode request body: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if decodedReq.PlayerID == "" {
-		http.Error(w, "cannot write an entry with a blank player id", http.StatusBadRequest)
+		errMsg := "cannot write an entry with a blank player id"
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -219,7 +233,9 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not write response: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -243,7 +259,9 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	plStats, ok := ds.statsDB[id]
 	if !ok {
 		notFoundErr := playerStatsNotFoundErr{id}
-		http.Error(w, notFoundErr.Error(), http.StatusBadRequest)
+		errMsg := notFoundErr.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -251,6 +269,8 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(plStats)
 	if err != nil {
-		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not encode player data: " + err.Error()
+		ds.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
