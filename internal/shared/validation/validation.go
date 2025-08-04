@@ -30,7 +30,7 @@ func ValidateRequest(req *http.Request) error {
 	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
 	defer cancel()
 
-	reqURL := fmt.Sprintf("http://:%v/auth/validation-internal", constants.AuthServerPort)
+	reqURL := fmt.Sprintf("%v://%v:%v/auth/validation-internal", constants.CommonProtocol, constants.CommonHost, constants.AuthServerPort)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, nil)
 	if err != nil {
 		return fmt.Errorf("request creation error: %v \n", err)
