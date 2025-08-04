@@ -75,8 +75,8 @@ type Server struct {
 	logger *log.Logger
 }
 
-// NewDataServer returns an initialized pointer to the data server
-func NewDataServer() *Server {
+// NewServer returns an initialized pointer to the data server
+func NewServer() *Server {
 
 	ds := &Server{
 		playersDB:    map[string]PlayerData{},
