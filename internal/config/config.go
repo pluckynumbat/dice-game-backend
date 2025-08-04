@@ -87,7 +87,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 	err := cs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		errMsg := "session validation error: " + err.Error()
+		errMsg := "error: session validation error: " + err.Error()
 		cs.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
@@ -99,7 +99,7 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(Config)
 	if err != nil {
-		errMsg := "could not encode game config"
+		errMsg := "error: could not encode game config"
 		cs.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
