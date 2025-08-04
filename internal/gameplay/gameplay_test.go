@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	profileServer = profile.NewServer(authServer)
 	go profileServer.Run(constants.ProfileServerPort)
 
-	statsServer := stats.NewStatsServer(authServer)
+	statsServer := stats.NewServer(authServer)
 	go statsServer.Run(constants.StatsServerPort)
 
 	code := m.Run()
