@@ -40,7 +40,7 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 		wantResponseBody *PlayerData
 	}{
 		{"nil server", nil, "player1", http.StatusInternalServerError, "application/json", nil},
-		{"invalid player", ds, "player1", http.StatusBadRequest, "application/json", nil},
+		{"invalid player", ds, "player1", http.StatusNotFound, "application/json", nil},
 		{"existing player", ds, "player2", http.StatusOK, "application/json", &PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}},
 	}
 
@@ -152,7 +152,7 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 		wantResponseBody *PlayerStats
 	}{
 		{"nil server", nil, "", http.StatusInternalServerError, "", nil},
-		{"new user", ds, "player1", http.StatusBadRequest, "application/json", &PlayerStats{}},
+		{"new user", ds, "player1", http.StatusNotFound, "application/json", &PlayerStats{}},
 		{"existing user", ds, "player2", http.StatusOK, "application/json", &PlayerStats{LevelStats: []PlayerLevelStats{
 			{1, 2, 3, 1},
 			{2, 1, 4, 2},
