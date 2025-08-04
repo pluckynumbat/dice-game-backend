@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"example.com/dice-game-backend/internal/auth"
-	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/shared/constants"
 	"net/http"
 	"net/http/httptest"
 	"os"
