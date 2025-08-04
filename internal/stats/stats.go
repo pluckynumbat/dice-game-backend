@@ -90,7 +90,9 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	err := ss.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		ss.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -107,9 +109,11 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	plStats, err, statusCode := ss.readStatsFromDB(id)
 	if err != nil {
 		if statusCode == int32(http.StatusBadRequest) {
-			// entry does not exist yet, we will just send back the entry response
+			// entry does not exist yet, we will just send back an empty response for stats
 		} else {
-			http.Error(w, "DB read error: "+err.Error(), http.StatusInternalServerError)
+			errMsg := "DB read error: " + err.Error()
+			ss.logger.Println(errMsg)
+			http.Error(w, errMsg, http.StatusInternalServerError)
 		}
 	} else {
 		statsData = plStats
@@ -124,7 +128,9 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
-		http.Error(w, "could not encode player data: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode player data: " + err.Error()
+		ss.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
@@ -208,7 +214,9 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 	decodedReq := &PlayerIDLevelStats{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not decode request body: " + err.Error()
+		ss.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -217,7 +225,9 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 	// try to update the stats
 	updatedStats, err := ss.ReturnUpdatedPlayerStats(decodedReq.PlayerID, &decodedReq.LevelStatsDelta)
 	if err != nil {
-		http.Error(w, "could not update player stats: "+err.Error(), http.StatusBadRequest)
+		errMsg := "error: could not update player stats: " + err.Error()
+		ss.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -225,7 +235,9 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(updatedStats)
 	if err != nil {
-		http.Error(w, "could not encode updated stats: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "error: could not encode updated stats: " + err.Error()
+		ss.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }
 
