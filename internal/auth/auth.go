@@ -107,14 +107,18 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// check if the required header is present
 	authHeader := r.Header["Authorization"]
 	if authHeader == nil {
-		http.Error(w, "received login request without the required header", http.StatusBadRequest)
+		errMsg := "received login request without the required header"
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	// get the username and password from the base 64 encoded data in the auth header
 	usr, pwd, err := as.decodeAuthHeaderPayload(authHeader[0])
 	if err != nil {
-		http.Error(w, "cannot decode the given credentials: "+err.Error(), http.StatusBadRequest)
+		errMsg := "cannot decode the given credentials: %v" + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -122,13 +126,15 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	lrb := &LoginRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(lrb)
 	if err != nil {
-		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
+		errMsg := "could not decode request body: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
-	// check if it is a new user request VS an existing user request
+	// check if it is a new user request VS an existing user request:
 	// first check the server version, if it does not match with our version,
-	// the request will be considered a new user request
+	// the request will be considered a new user request from the auth service's point of view
 	// otherwise, check the 'IsNewUser' flag from the request
 
 	var isNewUser bool
@@ -139,7 +145,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		isNewUser = lrb.IsNewUser
 	}
 
-	as.logger.Printf("received auth login request, is it for a new user? %v \n", isNewUser)
+	as.logger.Printf("received auth login request, is it for a new user? %v", isNewUser)
 
 	as.authMutex.Lock()
 	defer as.authMutex.Unlock()
@@ -149,7 +155,9 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		// username should not exist in credentials already
 		_, exists := as.credentials[usr]
 		if exists {
-			http.Error(w, "username already exists, cannot create new user", http.StatusBadRequest)
+			errMsg := "username already exists, cannot create new user"
+			as.logger.Println(errMsg)
+			http.Error(w, errMsg, http.StatusBadRequest)
 			return
 		}
 
@@ -161,7 +169,9 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		// username should exist in credentials already, and passwords should match
 		password, ok := as.credentials[usr]
 		if !ok || password != pwd {
-			http.Error(w, "invalid credentials", http.StatusBadRequest)
+			errMsg := "invalid credentials"
+			as.logger.Println(errMsg)
+			http.Error(w, errMsg, http.StatusBadRequest)
 			return
 		}
 	}
@@ -169,7 +179,9 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// generate the player id
 	pID, err := as.generatePlayerID(usr)
 	if err != nil {
-		http.Error(w, "could not generate player id: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not generate player id: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
@@ -180,7 +192,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	otherSession, exists := as.activePlayerIDs[pID]
 	if exists {
 		// if they do, delete that session,
-		as.logger.Printf("found an already existing session for the player id %v, deleting it \n", pID)
+		as.logger.Printf("found an already existing session for the player id %v, deleting it", pID)
 		delete(as.sessions, otherSession)
 	}
 
@@ -198,7 +210,9 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// provide the player id and server version in the response body
 	err = json.NewEncoder(w).Encode(&LoginResponse{pID, as.serverVersion})
 	if err != nil {
-		http.Error(w, "could not create response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not create response: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -215,7 +229,9 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	err := as.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "session error: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -228,13 +244,17 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	err = as.deleteSession(sID)
 	if err != nil {
-		http.Error(w, "could not delete session: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not delete session: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not write response: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -326,14 +346,18 @@ func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) 
 
 	err := as.ValidateRequest(r)
 	if err != nil {
-		http.Error(w, "session validation failed: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "session validation failed: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
 	// provide the success response, if the status is 200, validation will be considered to be successful
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		http.Error(w, "could not write response: "+err.Error(), http.StatusInternalServerError)
+		errMsg := "could not write response: " + err.Error()
+		as.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -365,7 +389,7 @@ func (as *Server) deleteAllStaleSessions(timeNow time.Time, expirySeconds int64)
 		stale := (unixNow - session.LastActionTime) > expirySeconds
 
 		if stale {
-			as.logger.Printf("found an old session for player id: %v, deleting it \n", session.PlayerID)
+			as.logger.Printf("found an old session for player id: %v, deleting it", session.PlayerID)
 			err := as.deleteSession(sID)
 			if err != nil {
 				return err
@@ -388,10 +412,11 @@ func (as *Server) StartPeriodicSessionSweep(sweepPeriod time.Duration, sessionEx
 	go func() {
 		for {
 			timeNow := <-ticker.C
-			as.logger.Printf("periodic session sweep tick at \n")
+			as.logger.Println("periodic session sweep tick...")
 			err := as.deleteAllStaleSessions(timeNow, sessionExpirySeconds)
 			if err != nil {
-				fmt.Printf("error in the periodic session sweep, abort")
+				errMsg := "error in the periodic session sweep, abort"
+				as.logger.Println(errMsg)
 				return
 			}
 		}
