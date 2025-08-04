@@ -22,10 +22,10 @@ var profileServer *profile.Server
 
 func TestMain(m *testing.M) {
 
-	authServer = auth.NewAuthServer()
+	authServer = auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	profileServer = profile.NewProfileServer(authServer)
@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 
 func TestNewGameplayServer(t *testing.T) {
 
-	as := auth.NewAuthServer()
+	as := auth.NewServer()
 
 	gs := NewGameplayServer(as)
 

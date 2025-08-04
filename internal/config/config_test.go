@@ -12,7 +12,7 @@ import (
 
 func TestNewConfigServer(t *testing.T) {
 
-	configServer := NewConfigServer(auth.NewAuthServer())
+	configServer := NewServer(auth.NewServer())
 
 	if configServer == nil {
 		t.Fatal("new config server should not return a nil server pointer")
@@ -42,7 +42,7 @@ func TestHandleConfigRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	cs2 = NewConfigServer(as)
+	cs2 = NewServer(as)
 
 	tests := []struct {
 		name            string

@@ -33,8 +33,8 @@ type Server struct {
 	logger           *log.Logger
 }
 
-// NewConfigServer returns an initialized pointer to the config server
-func NewConfigServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the config server
+func NewServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		requestValidator: rv,
 		logger:           log.New(os.Stdout, "config: ", log.Ltime|log.LUTC|log.Lmsgprefix),
@@ -87,8 +87,9 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 	err := cs.requestValidator.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		cs.logger.Println("session validation error")
-		http.Error(w, "session error: "+err.Error(), http.StatusUnauthorized)
+		errMsg := "error: session validation error: " + err.Error()
+		cs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
 	}
 
@@ -98,7 +99,8 @@ func (cs *Server) HandleConfigRequest(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(Config)
 	if err != nil {
-		cs.logger.Println("could not encode game config")
-		http.Error(w, "could not encode game config", http.StatusInternalServerError)
+		errMsg := "error: could not encode game config"
+		cs.logger.Println(errMsg)
+		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
 }

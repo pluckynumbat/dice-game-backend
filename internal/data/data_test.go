@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewDataServer(t *testing.T) {
-	dataServer := NewDataServer()
+	dataServer := NewServer()
 
 	if dataServer == nil {
 		t.Fatal("new data server should not return a nil server pointer")
@@ -28,7 +28,7 @@ func TestNewDataServer(t *testing.T) {
 
 func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 
-	ds := NewDataServer()
+	ds := NewServer()
 	ds.playersDB["player2"] = PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
 
 	tests := []struct {
@@ -83,7 +83,7 @@ func TestServer_HandleReadPlayerDataRequest(t *testing.T) {
 
 func TestServer_HandleWritePlayerDataRequest(t *testing.T) {
 
-	ds := NewDataServer()
+	ds := NewServer()
 	ds.playersDB["player2"] = PlayerData{PlayerID: "player2", Level: 1, Energy: 20, LastUpdateTime: time.Now().UTC().Unix()}
 
 	tests := []struct {
@@ -133,7 +133,7 @@ func TestServer_HandleWritePlayerDataRequest(t *testing.T) {
 
 func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 
-	ds := NewDataServer()
+	ds := NewServer()
 
 	ds.statsDB["player2"] = PlayerStats{
 		LevelStats: []PlayerLevelStats{
@@ -199,7 +199,7 @@ func TestServer_HandleReadPlayerStatsRequest(t *testing.T) {
 
 func TestServer_HandleWritePlayerStatsRequest(t *testing.T) {
 
-	ds := NewDataServer()
+	ds := NewServer()
 	ds.statsDB["player2"] = PlayerStats{
 		LevelStats: []PlayerLevelStats{
 			{1, 2, 3, 1},

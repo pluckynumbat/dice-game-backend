@@ -18,7 +18,7 @@ import (
 
 func TestMain(m *testing.M) {
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	code := m.Run()
@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 
 func TestNewStatsServer(t *testing.T) {
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	statsServer := NewStatsServer(authServer)
 
 	if statsServer == nil {
@@ -40,7 +40,7 @@ func TestServer_ReturnUpdatedPlayerStats(t *testing.T) {
 
 	var s1, s2 *Server
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	s2 = NewStatsServer(authServer)
 
 	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"data", data.PlayerStats{nil}})
@@ -179,7 +179,7 @@ func TestServer_HandlePlayerStatsRequest(t *testing.T) {
 
 func TestServer_HandleUpdatePlayerStatsRequest(t *testing.T) {
 
-	s2 := NewStatsServer(auth.NewAuthServer())
+	s2 := NewStatsServer(auth.NewServer())
 
 	err := s2.writeStatsToDB(&data.PlayerStatsWithID{"player4", data.PlayerStats{nil}})
 	if err != nil {

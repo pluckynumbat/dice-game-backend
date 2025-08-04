@@ -15,7 +15,7 @@ var authServer *auth.Server
 
 func TestMain(m *testing.M) {
 
-	authServer = auth.NewAuthServer()
+	authServer = auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
 	code := m.Run()

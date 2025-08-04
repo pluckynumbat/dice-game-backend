@@ -23,7 +23,7 @@ func SetupTestAuth() (*auth.Server, string, error) {
 	newAuthReq.SetBasicAuth("user1", "pass1")
 	authRespRec := httptest.NewRecorder()
 
-	as := auth.NewAuthServer()
+	as := auth.NewServer()
 	as.HandleLoginRequest(authRespRec, newAuthReq)
 	sID := authRespRec.Header().Get("Session-Id")
 

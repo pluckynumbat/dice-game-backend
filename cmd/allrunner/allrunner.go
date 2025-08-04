@@ -59,13 +59,13 @@ func main() {
 
 	rv := &requestValidator{}
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	go authServer.Run(constants.AuthServerPort)
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
-	configServer := config.NewConfigServer(rv)
+	configServer := config.NewServer(rv)
 	go configServer.Run(constants.ConfigServerPort)
 
 	profileServer := profile.NewProfileServer(rv)

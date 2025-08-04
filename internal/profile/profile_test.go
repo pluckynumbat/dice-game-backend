@@ -19,7 +19,7 @@ import (
 
 func TestMain(m *testing.M) {
 
-	dataServer := data.NewDataServer()
+	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
 	code := m.Run()
@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 
 func TestNewProfileServer(t *testing.T) {
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	profileServer := NewProfileServer(authServer)
 
 	if profileServer == nil {
@@ -39,7 +39,7 @@ func TestNewProfileServer(t *testing.T) {
 
 func TestServer_GetPlayer(t *testing.T) {
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	ps := NewProfileServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()})
@@ -81,7 +81,7 @@ func TestServer_GetPlayer(t *testing.T) {
 
 func TestServer_UpdatePlayerData(t *testing.T) {
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	ps := NewProfileServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
@@ -276,7 +276,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 
 func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
 
-	authServer := auth.NewAuthServer()
+	authServer := auth.NewServer()
 	ps := NewProfileServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player8", 1, 20, time.Now().UTC().Unix()})
