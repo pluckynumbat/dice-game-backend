@@ -57,8 +57,8 @@ type Server struct {
 	logger *log.Logger
 }
 
-// NewProfileServer returns an initialized pointer to the profile server
-func NewProfileServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the profile server
+func NewServer(rv validation.RequestValidator) *Server {
 
 	ps := &Server{
 		playersMutex: sync.Mutex{},
