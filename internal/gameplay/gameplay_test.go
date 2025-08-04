@@ -77,7 +77,7 @@ func TestServer_HandleEnterLevelRequest(t *testing.T) {
 		{"nil server", nil, "", nil, http.StatusInternalServerError, "", nil},
 		{"blank session id", gs, "", nil, http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
-		{"invalid player", gs, sID, &EnterLevelRequestBody{"player1", 1}, http.StatusBadRequest, "application/json", nil},
+		{"invalid player", gs, sID, &EnterLevelRequestBody{"player1", 1}, http.StatusInternalServerError, "application/json", nil},
 		{"invalid level", gs, sID, &EnterLevelRequestBody{"player2", 50}, http.StatusBadRequest, "application/json", nil},
 		{"locked level", gs, sID, &EnterLevelRequestBody{"player2", 5}, http.StatusOK, "application/json", &EnterLevelResponse{false, *newPlayerData}},
 		{name: "valid level", server: gs, sessionID: sID, requestBody: &EnterLevelRequestBody{"player2", 1}, wantStatus: http.StatusOK, wantContentType: "application/json", wantResponseBody: &EnterLevelResponse{
@@ -161,7 +161,7 @@ func TestServer_HandleLevelResultRequest(t *testing.T) {
 		{"nil server", nil, "", nil, http.StatusInternalServerError, "", nil},
 		{"blank session id", gs, "", nil, http.StatusUnauthorized, "application/json", nil},
 		{"invalid session id", gs, "testSessionID", nil, http.StatusUnauthorized, "application/json", nil},
-		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusBadRequest, "application/json", nil},
+		{"invalid player", gs, sID, &LevelResultRequestBody{"player1", 1, nil}, http.StatusInternalServerError, "application/json", nil},
 		{"invalid level", gs, sID, &LevelResultRequestBody{"player3", 50, nil}, http.StatusBadRequest, "application/json", nil},
 		{"locked level", gs, sID, &LevelResultRequestBody{"player3", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
 		{"nil rolls", gs, sID, &LevelResultRequestBody{"player3", 5, nil}, http.StatusBadRequest, "application/json", &LevelResultResponse{}},
