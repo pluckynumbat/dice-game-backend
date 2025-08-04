@@ -177,10 +177,10 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	// fetch the entry (if present) from the database
 	player, ok := ds.playersDB[id]
 	if !ok {
-		notFoundErr := playerNotFoundErr{id}
+		notFoundErr := PlayerNotFoundErr{id}
 		errMsg := notFoundErr.Error()
 		ds.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusNotFound)
 		return
 	}
 
@@ -258,10 +258,10 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	// fetch the entry (if present) from the database
 	plStats, ok := ds.statsDB[id]
 	if !ok {
-		notFoundErr := playerStatsNotFoundErr{id}
+		notFoundErr := PlayerStatsNotFoundErr{id}
 		errMsg := notFoundErr.Error()
 		ds.logger.Println(errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		http.Error(w, errMsg, http.StatusNotFound)
 		return
 	}
 
