@@ -107,7 +107,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// check if the required header is present
 	authHeader := r.Header["Authorization"]
 	if authHeader == nil {
-		errMsg := "received login request without the required header"
+		errMsg := "error: received login request without the required header"
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -116,7 +116,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// get the username and password from the base 64 encoded data in the auth header
 	usr, pwd, err := as.decodeAuthHeaderPayload(authHeader[0])
 	if err != nil {
-		errMsg := "cannot decode the given credentials: %v" + err.Error()
+		errMsg := "error: cannot decode the given credentials: %v" + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -126,7 +126,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	lrb := &LoginRequestBody{}
 	err = json.NewDecoder(r.Body).Decode(lrb)
 	if err != nil {
-		errMsg := "could not decode request body: " + err.Error()
+		errMsg := "error: could not decode request body: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -155,7 +155,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		// username should not exist in credentials already
 		_, exists := as.credentials[usr]
 		if exists {
-			errMsg := "username already exists, cannot create new user"
+			errMsg := "error: username already exists, cannot create new user"
 			as.logger.Println(errMsg)
 			http.Error(w, errMsg, http.StatusBadRequest)
 			return
@@ -169,7 +169,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 		// username should exist in credentials already, and passwords should match
 		password, ok := as.credentials[usr]
 		if !ok || password != pwd {
-			errMsg := "invalid credentials"
+			errMsg := "error: invalid credentials"
 			as.logger.Println(errMsg)
 			http.Error(w, errMsg, http.StatusBadRequest)
 			return
@@ -179,7 +179,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// generate the player id
 	pID, err := as.generatePlayerID(usr)
 	if err != nil {
-		errMsg := "could not generate player id: " + err.Error()
+		errMsg := "error: could not generate player id: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -210,7 +210,7 @@ func (as *Server) HandleLoginRequest(w http.ResponseWriter, r *http.Request) {
 	// provide the player id and server version in the response body
 	err = json.NewEncoder(w).Encode(&LoginResponse{pID, as.serverVersion})
 	if err != nil {
-		errMsg := "could not create response: " + err.Error()
+		errMsg := "error: could not create response: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -229,7 +229,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 	err := as.ValidateRequest(r)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
-		errMsg := "session validation error: " + err.Error()
+		errMsg := "error: session validation error: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
@@ -244,7 +244,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	err = as.deleteSession(sID)
 	if err != nil {
-		errMsg := "could not delete session: " + err.Error()
+		errMsg := "error: could not delete session: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -252,7 +252,7 @@ func (as *Server) HandleLogoutRequest(w http.ResponseWriter, r *http.Request) {
 
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		errMsg := "could not write response: " + err.Error()
+		errMsg := "error: could not write response: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -346,7 +346,7 @@ func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) 
 
 	err := as.ValidateRequest(r)
 	if err != nil {
-		errMsg := "session validation failed: " + err.Error()
+		errMsg := "error: session validation failed: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
@@ -355,7 +355,7 @@ func (as *Server) HandleValidateRequest(w http.ResponseWriter, r *http.Request) 
 	// provide the success response, if the status is 200, validation will be considered to be successful
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		errMsg := "could not write response: " + err.Error()
+		errMsg := "error: could not write response: " + err.Error()
 		as.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
