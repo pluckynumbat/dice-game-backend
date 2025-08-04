@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 func TestNewProfileServer(t *testing.T) {
 
 	authServer := auth.NewServer()
-	profileServer := NewProfileServer(authServer)
+	profileServer := NewServer(authServer)
 
 	if profileServer == nil {
 		t.Fatal("new profile server should not return a nil server pointer")
@@ -40,7 +40,7 @@ func TestNewProfileServer(t *testing.T) {
 func TestServer_GetPlayer(t *testing.T) {
 
 	authServer := auth.NewServer()
-	ps := NewProfileServer(authServer)
+	ps := NewServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 50, time.Now().UTC().Unix()})
 	if err != nil {
@@ -82,7 +82,7 @@ func TestServer_GetPlayer(t *testing.T) {
 func TestServer_UpdatePlayerData(t *testing.T) {
 
 	authServer := auth.NewServer()
-	ps := NewProfileServer(authServer)
+	ps := NewServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
@@ -139,7 +139,7 @@ func TestServer_HandleNewPlayerRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := NewProfileServer(as)
+	ps := NewServer(as)
 
 	err = ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
@@ -213,7 +213,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 		t.Fatal("auth setup error: " + err.Error())
 	}
 
-	ps := NewProfileServer(as)
+	ps := NewServer(as)
 
 	err = ps.writePlayerToDB(&data.PlayerData{"player2", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
@@ -277,7 +277,7 @@ func TestServer_HandlePlayerDataRequest(t *testing.T) {
 func TestServer_HandleUpdatePlayerRequest(t *testing.T) {
 
 	authServer := auth.NewServer()
-	ps := NewProfileServer(authServer)
+	ps := NewServer(authServer)
 
 	err := ps.writePlayerToDB(&data.PlayerData{"player8", 1, 20, time.Now().UTC().Unix()})
 	if err != nil {
