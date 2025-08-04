@@ -20,7 +20,7 @@ type playerNotFoundErr struct {
 }
 
 func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("player with id: %v was not found in the player DB \n", err.playerID)
+	return fmt.Sprintf("error: player with id: %v was not found in the player DB", err.playerID)
 }
 
 type playerStatsNotFoundErr struct {
@@ -28,7 +28,7 @@ type playerStatsNotFoundErr struct {
 }
 
 func (err playerStatsNotFoundErr) Error() string {
-	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB \n", err.playerID)
+	return fmt.Sprintf("error: stats entry for id: %v was not found in the stats DB", err.playerID)
 }
 
 // Data storage related structs (used by other services as well):
@@ -126,14 +126,14 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	decodedReq := &PlayerData{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		errMsg := "could not decode request body: " + err.Error()
+		errMsg := "error: could not decode request body: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if decodedReq.PlayerID == "" {
-		errMsg := "cannot write an entry with a blank player id"
+		errMsg := "error: cannot write an entry with a blank player id"
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -152,7 +152,7 @@ func (ds *Server) HandleWritePlayerDataRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		errMsg := "could not write response: " + err.Error()
+		errMsg := "error: could not write response: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -188,7 +188,7 @@ func (ds *Server) HandleReadPlayerDataRequest(w http.ResponseWriter, r *http.Req
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(player)
 	if err != nil {
-		errMsg := "could not encode player data: " + err.Error()
+		errMsg := "error: could not encode player data: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
@@ -207,14 +207,14 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	decodedReq := &PlayerStatsWithID{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
-		errMsg := "could not decode request body: " + err.Error()
+		errMsg := "error: could not decode request body: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	if decodedReq.PlayerID == "" {
-		errMsg := "cannot write an entry with a blank player id"
+		errMsg := "error: cannot write an entry with a blank player id"
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
@@ -233,7 +233,7 @@ func (ds *Server) HandleWritePlayerStatsRequest(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = fmt.Fprint(w, "success")
 	if err != nil {
-		errMsg := "could not write response: " + err.Error()
+		errMsg := "error: could not write response: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 		return
@@ -269,7 +269,7 @@ func (ds *Server) HandleReadPlayerStatsRequest(w http.ResponseWriter, r *http.Re
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(plStats)
 	if err != nil {
-		errMsg := "could not encode player data: " + err.Error()
+		errMsg := "error: could not encode player data: " + err.Error()
 		ds.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
 	}
