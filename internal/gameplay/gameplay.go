@@ -57,8 +57,8 @@ type Server struct {
 	logger           *log.Logger
 }
 
-// NewGameplayServer returns an initialized pointer to the gameplay server
-func NewGameplayServer(rv validation.RequestValidator) *Server {
+// NewServer returns an initialized pointer to the gameplay server
+func NewServer(rv validation.RequestValidator) *Server {
 	return &Server{
 		requestValidator: rv,
 		logger:           log.New(os.Stdout, "gameplay: ", log.Ltime|log.LUTC|log.Lmsgprefix),
