@@ -20,7 +20,7 @@ type playerNotFoundErr struct {
 }
 
 func (err playerNotFoundErr) Error() string {
-	return fmt.Sprintf("error: player with id: %v was not found in the player DB", err.playerID)
+	return fmt.Sprintf("player with id: %v was not found in the player DB", err.playerID)
 }
 
 type playerStatsNotFoundErr struct {
@@ -28,7 +28,7 @@ type playerStatsNotFoundErr struct {
 }
 
 func (err playerStatsNotFoundErr) Error() string {
-	return fmt.Sprintf("error: stats entry for id: %v was not found in the stats DB", err.playerID)
+	return fmt.Sprintf("stats entry for id: %v was not found in the stats DB", err.playerID)
 }
 
 // Data storage related structs (used by other services as well):
