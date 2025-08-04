@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/types"
+	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/validation"
 	"fmt"
 	"log"
@@ -29,6 +29,15 @@ type playerStatsNotFoundErr struct {
 
 func (err playerStatsNotFoundErr) Error() string {
 	return fmt.Sprintf("stats entry for id: %v (level %v) is not present \n", err.playerID, err.level)
+}
+
+// Stats structs (not used in data storage):
+
+// PlayerIDLevelStats is used as a request body for the internal request to update
+// player's stats and return them (just a composite of a string, and player level stats)
+type PlayerIDLevelStats struct {
+	PlayerID        string                `json:"playerID"`
+	LevelStatsDelta data.PlayerLevelStats `json:"levelStatsDelta"`
 }
 
 // Server is the core stats service provider
@@ -92,7 +101,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	ss.statsMutex.Lock()
 	defer ss.statsMutex.Unlock()
 
-	statsData := &types.PlayerStats{} // create the data struct for the response
+	statsData := &data.PlayerStats{} // create the data struct for the response
 
 	// make a request to the data service to read the stats entry for the player
 	plStats, err, statusCode := ss.readStatsFromDB(id)
@@ -107,7 +116,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	// create and send the response
-	response := &types.PlayerStatsWithID{
+	response := &data.PlayerStatsWithID{
 		PlayerID:    id,
 		PlayerStats: *statsData,
 	}
@@ -120,7 +129,7 @@ func (ss *Server) HandlePlayerStatsRequest(w http.ResponseWriter, r *http.Reques
 }
 
 // ReturnUpdatedPlayerStats will update a given PlayerLevelStats entry and return that player's stats
-func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *types.PlayerLevelStats) (*types.PlayerStats, error) {
+func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *data.PlayerLevelStats) (*data.PlayerStats, error) {
 
 	if ss == nil {
 		return nil, serverNilError
@@ -152,8 +161,8 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *types
 		if levelIndex == 0 {
 			// if this is for the first level, this could be the first ever stat entry for that player,
 			// in that case create an empty player stats struct, and an empty level stats slice in it
-			playerStats = &types.PlayerStats{
-				LevelStats: make([]types.PlayerLevelStats, 0, ss.defaultLevelCount),
+			playerStats = &data.PlayerStats{
+				LevelStats: make([]data.PlayerLevelStats, 0, ss.defaultLevelCount),
 			}
 		} else {
 			// return an error
@@ -177,7 +186,7 @@ func (ss *Server) ReturnUpdatedPlayerStats(playerID string, newStatsDelta *types
 	}
 
 	// make a request to the data service to write the stats entry for the player
-	plStatsWithID := &types.PlayerStatsWithID{PlayerID: playerID, PlayerStats: *playerStats}
+	plStatsWithID := &data.PlayerStatsWithID{PlayerID: playerID, PlayerStats: *playerStats}
 	err = ss.writeStatsToDB(plStatsWithID)
 	if err != nil {
 		return nil, err
@@ -196,7 +205,7 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 	}
 
 	// decode the request body, which should be a PlayerIDLevelStats struct
-	decodedReq := &types.PlayerIDLevelStats{}
+	decodedReq := &PlayerIDLevelStats{}
 	err := json.NewDecoder(r.Body).Decode(decodedReq)
 	if err != nil {
 		http.Error(w, "could not decode request body: "+err.Error(), http.StatusBadRequest)
@@ -221,7 +230,7 @@ func (ss *Server) HandleUpdatePlayerStatsRequest(w http.ResponseWriter, r *http.
 }
 
 // readStatsFromDB makes an internal (server to server) request to the data service to read the stats for the required player
-func (ss *Server) readStatsFromDB(playerID string) (*types.PlayerStats, error, int32) {
+func (ss *Server) readStatsFromDB(playerID string) (*data.PlayerStats, error, int32) {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
@@ -248,7 +257,7 @@ func (ss *Server) readStatsFromDB(playerID string) (*types.PlayerStats, error, i
 	}
 
 	//decode the response for the player data
-	playerStats := &types.PlayerStats{}
+	playerStats := &data.PlayerStats{}
 	err = json.NewDecoder(resp.Body).Decode(playerStats)
 	if err != nil {
 		return nil, err, invalidStatusCode
@@ -258,7 +267,7 @@ func (ss *Server) readStatsFromDB(playerID string) (*types.PlayerStats, error, i
 }
 
 // writeStatsToDB makes an internal (server to server) request to the data service to write the required player's stats entries
-func (ss *Server) writeStatsToDB(plStatsWithID *types.PlayerStatsWithID) error {
+func (ss *Server) writeStatsToDB(plStatsWithID *data.PlayerStatsWithID) error {
 
 	// create a new context
 	ctx, cancel := context.WithTimeout(context.TODO(), constants.InternalRequestDeadlineSeconds*time.Second)
