@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"example.com/dice-game-backend/internal/config"
 	"example.com/dice-game-backend/internal/data"
 	"example.com/dice-game-backend/internal/shared/constants"
