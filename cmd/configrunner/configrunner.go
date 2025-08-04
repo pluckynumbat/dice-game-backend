@@ -25,6 +25,6 @@ func (rv *requestValidator) ValidateRequest(req *http.Request) error {
 
 func main() {
 	fmt.Println("starting the config server...")
-	configServer := config.NewConfigServer(&requestValidator{})
+	configServer := config.NewServer(&requestValidator{})
 	configServer.Run(constants.ConfigServerPort)
 }

@@ -65,7 +65,7 @@ func main() {
 	dataServer := data.NewServer()
 	go dataServer.Run(constants.DataServerPort)
 
-	configServer := config.NewConfigServer(rv)
+	configServer := config.NewServer(rv)
 	go configServer.Run(constants.ConfigServerPort)
 
 	profileServer := profile.NewProfileServer(rv)
