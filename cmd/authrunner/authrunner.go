@@ -3,7 +3,7 @@ package main
 
 import (
 	"example.com/dice-game-backend/internal/auth"
-	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/shared/constants"
 	"fmt"
 )
 

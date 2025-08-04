@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/shared/constants"
 	"fmt"
 	"log"
 	"net/http"

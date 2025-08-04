@@ -4,7 +4,7 @@ package validation
 
 import (
 	"context"
-	"example.com/dice-game-backend/internal/constants"
+	"example.com/dice-game-backend/internal/shared/constants"
 	"fmt"
 	"net/http"
 	"time"

@@ -3,8 +3,8 @@ package config
 
 import (
 	"encoding/json"
-	"example.com/dice-game-backend/internal/constants"
-	"example.com/dice-game-backend/internal/validation"
+	"example.com/dice-game-backend/internal/shared/constants"
+	"example.com/dice-game-backend/internal/shared/validation"
 	"fmt"
 	"log"
 	"net/http"

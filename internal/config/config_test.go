@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"example.com/dice-game-backend/internal/auth"
-	"example.com/dice-game-backend/internal/testsetup"
+	"example.com/dice-game-backend/internal/shared/testsetup"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
