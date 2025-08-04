@@ -303,7 +303,7 @@ func (gs *Server) getPlayerFromProfile(playerID string, sessionID string) (*data
 	defer cancel()
 
 	// create the request
-	reqURL := fmt.Sprintf("http://:%v/profile/player-data/%v", constants.ProfileServerPort, playerID)
+	reqURL := fmt.Sprintf("%v://%v:%v/profile/player-data/%v", constants.CommonProtocol, constants.CommonHost, constants.ProfileServerPort, playerID)
 	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
 	if err != nil {
 		return nil, err
@@ -352,7 +352,7 @@ func (gs *Server) updatePlayerData(playerID string, energyDelta int32, newLevel 
 	}
 
 	// create the request
-	reqURL := fmt.Sprintf("http://:%v/profile/player-data-internal", constants.ProfileServerPort)
+	reqURL := fmt.Sprintf("%v://%v:%v/profile/player-data-internal", constants.CommonProtocol, constants.CommonHost, constants.ProfileServerPort)
 	req, err := http.NewRequestWithContext(ctx, "PUT", reqURL, reqBody)
 	if err != nil {
 		return nil, err
@@ -399,7 +399,7 @@ func (gs *Server) returnUpdatedPlayerStats(playerID string, newStatsDelta *data.
 	}
 
 	// create the request
-	reqURL := fmt.Sprintf("http://:%v/stats/player-stats-internal", constants.StatsServerPort)
+	reqURL := fmt.Sprintf("%v://%v:%v/stats/player-stats-internal", constants.CommonProtocol, constants.CommonHost, constants.StatsServerPort)
 	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, reqBody)
 	if err != nil {
 		return nil, err
