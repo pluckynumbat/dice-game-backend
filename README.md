@@ -57,3 +57,36 @@ If changed, the [constants file in the client repo](https://github.com/pluckynum
 ### Config:
 The [config](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/config/config.go#L44) is hard coded and located in the config service, here: `project-root/internal/config/config.go`. Feel free to change that! One of the unit tests for the config service runs a validation check on the hard coded config which you can run to make sure the values are reasonable.
 
+
+## Part 3. Additional information about the services
+
+### The [auth](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/auth/auth.go) service (always critical):
+ - This deals with the authenticating the player and managing user sessions.
+ - It holds credentials, sessions, and active player IDs as maps.
+ - This service also acts as the session validator for other services (except for data service).
+ - **Important**: If this service goes down and then is restarted, player has to go through the login flow again, but the progression might still be saved (that depends on the data service) 
+ - **Bonus**: This service runs a session sweeper which checks the sessions map every `6` hours, and deletes sessions that have not been interacted with for `24` hours! Those settings are constants in the auth service file, and can be changed there if needed!
+
+### The [data](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/data/data.go) service (always critical):
+- This is the storage service for the backend, it stores player data and player stats
+- It stores the `playerDB` and `statsDB` (both are in memory maps)
+- All requests to this server are internal (only come from other servers in the backend)
+- **Important**: If this service goes down and then is restarted, the player data and stats (all progression) are lost.
+
+### The [config](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/config/config.go) service (critical for client startup):
+- This provides a wrapper over the config, which can be used directly by other services.
+- The client accesses the config at startup via the public get config request.
+
+### The [profile](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/profile/profile.go) service (critical for client startup, and during gameplay):
+- This service provides all functionality related to retrieving, updating, and returning the player's dynamic data like level and energy.
+- It handles new player / get player requests from the client, and sends internal requests to the data service to read / write to the playerDB.
+- It also gets internal requests from the gameplay service.
+
+### The [stats](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/stats/stats.go) service (critical for client startup, and during gameplay):
+- This service provides all functionality related to retrieving, updating, and returning the player's historic data for each level they have played (like win count, loss count, and best score).
+- It handles get stats requests from the client, and sends internal requests to the data service to read / write to the statsDB.
+- It also gets internal requests from the gameplay service.
+
+### The [gameplay](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/gameplay/gameplay.go) service (critical during gameplay):
+- This service provides all functionality related to gameplay aspects like entering a level, getting the level results, and updating the player's live data and stats based on that.
+- It handles gameplay requests from the client, and sends internal requests to the profile and stats services.
