@@ -47,3 +47,13 @@ Open the project in an IDE, navigate to those 6 files above and press play on th
 
 ### All the information you need to run is above, and the following is just more context about the various details!
 
+
+## Part 2. More Settings
+
+### Constants:
+The [constants](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/shared/constants/constants.go) file (located at `project-root/internal/shared/constants.go`) holds settings like port numbers for the services which you might want to change if needed.
+If changed, the [constants file in the client repo](https://github.com/pluckynumbat/dice-game-client/blob/main/Assets/Scripts/Constants.cs) should also be changed in the same way.
+
+### Config:
+The [config](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/config/config.go#L44) is hard coded and located in the config service, here: `project-root/internal/config/config.go`. Feel free to change that! One of the unit tests for the config service runs a validation check on the hard coded config which you can run to make sure the values are reasonable.
+
