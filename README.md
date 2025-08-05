@@ -49,9 +49,9 @@ Open the project in an IDE, navigate to those 6 files above and press play on th
 - It also separates the logs in different windows, which can help with monitoring!
 
 ---
-### Only if connecting to a non localhost client:
+### Only if accepting requests from non localhost clients:
 1. Please make sure that the ports used by the services have not been blocked by the firewall
-2. Check out client side considerations [if connecting to non localhost backend](https://github.com/pluckynumbat/dice-game-client?tab=readme-ov-file#only-if-connecting-to-a-non-localhost-backend) 
+2. Check out client side considerations [if connecting to a non localhost backend](https://github.com/pluckynumbat/dice-game-client?tab=readme-ov-file#only-if-connecting-to-a-non-localhost-backend) 
 
 ---
 ### All the information you need to run is above, and the following is just more context about the various details!
