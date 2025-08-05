@@ -111,7 +111,7 @@ func (gs *Server) HandleEnterLevelRequest(w http.ResponseWriter, r *http.Request
 
 	// get the config and the player data
 	cfg := config.Config
-	if entryRequest.Level < 0 || entryRequest.Level > int32(len(cfg.Levels)) {
+	if entryRequest.Level <= 0 || entryRequest.Level > int32(len(cfg.Levels)) {
 		errMsg := "error: invalid level in request"
 		gs.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
@@ -205,7 +205,7 @@ func (gs *Server) HandleLevelResultRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if request.Level < 0 || request.Level > int32(len(cfg.Levels)) || request.Level > player.Level {
+	if request.Level <= 0 || request.Level > int32(len(cfg.Levels)) || request.Level > player.Level {
 		errMsg := "error: invalid level in request"
 		gs.logger.Println(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
