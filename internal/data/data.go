@@ -1,4 +1,4 @@
-// Package data: the storage service for the backend, it stores player data and player stats
+// Package data: the storage service for the backend, it stores all the player data and player stats.
 // All requests to this server are internal (only come from other servers in the backend)
 package data
 

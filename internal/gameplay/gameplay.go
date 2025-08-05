@@ -1,4 +1,5 @@
-// Package gameplay: service which deals with entering levels, playing the dice game etc.
+// Package gameplay: service which deals with gameplay aspects like entering levels,
+// playing the dice game, and updating data based on wins / losses.
 
 package gameplay
 

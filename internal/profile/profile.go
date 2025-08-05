@@ -1,4 +1,4 @@
-// Package profile: service which deals with the player data
+// Package profile: provides all functionality related to retrieving, updating, and returning the player's dynamic data like level and energy.
 package profile
 
 import (

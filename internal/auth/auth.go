@@ -1,4 +1,5 @@
-// Package auth: service which deals with the authenticating the player and managing user sessions
+// Package auth: service which deals with the authenticating the player,
+// managing user sessions, and validating other external requests based on session.
 package auth
 
 import (

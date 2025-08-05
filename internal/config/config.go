@@ -1,4 +1,4 @@
-// Package config: service which deals with the game config
+// Package config: service which is a wrapper around the game config
 package config
 
 import (

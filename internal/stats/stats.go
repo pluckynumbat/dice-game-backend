@@ -1,4 +1,5 @@
-// Package stats: service which provides details regarding relevant player stats
+// Package stats: provides all functionality related to retrieving, updating, and returning the player's
+// historic data for each level they have played (like win count, loss count, and best score).
 package stats
 
 import (
