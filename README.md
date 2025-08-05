@@ -76,6 +76,7 @@ Some tests have spinning up services as part of their setup. Please make sure th
 
 **Public Endpoints:** login (Post), logout (Delete) \
 **Internal Endpoints:** validation-internal (Post)
+
 ---
 ### The [data](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/data/data.go) service (always critical):
 - This is the storage service for the backend. 
