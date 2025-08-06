@@ -4,11 +4,11 @@ package constants
 const CommonProtocol = "http"
 const CommonHost = ""
 
-const AuthServerPort = "10101"
-const DataServerPort = "20202"
-const ConfigServerPort = "30303"
-const ProfileServerPort = "40404"
-const StatsServerPort = "50505"
-const GameplayServerPort = "60606"
+const AuthServerPort = "40001"
+const DataServerPort = "40002"
+const ConfigServerPort = "40003"
+const ProfileServerPort = "40004"
+const StatsServerPort = "40005"
+const GameplayServerPort = "40006"
 
 const InternalRequestDeadlineSeconds = 2
