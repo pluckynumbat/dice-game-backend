@@ -23,7 +23,7 @@ From the root of the repository, just type the command: \
 Open the project in the IDE, navigate to `cmd/allrunner/allrunner.go` and press play on the main function
 
 ### what is **All In One** mode?
- - This spins up all the 6 core services on their designated ports, and provides a command line interface in the same window, 
+ - This spins up all the 6 core services as goroutines on their designated ports, and provides a command line interface in the same window, 
 where you can press the keys `0` or `q` or `Q` (followed by `Enter`) to shut down all servers and quit!
  - This is really convenient to use, and you can view all the logs from one place, but if you want individual control over the different services, you would like the manual mode!
 
@@ -42,14 +42,26 @@ stats service: `go run cmd/statsrunner/statsrunner.go` \
 gameplay service: `go run cmd/gameplayrunner/gameplayrunner.go`
 
 #### via IDE (like Goland)
-Open the project in an IDE, navigate to those 6 files above and press play on the main functions
+ - Open the project in an IDE, navigate to the 6 runner files mentioned above (here they are again): \
+auth: `cmd/authrunner/authrunner.go` \
+data: `cmd/datarunner/datarunner.go` \
+config: `cmd/configrunner/configrunner.go` \
+profile: `cmd/profilerunner/profilerunner.go` \
+stats: `cmd/statsrunner/statsrunner.go` \
+gameplay: `cmd/gameplayrunner/gameplayrunner.go`
+ - In each of those files, press play on the main functions
 
 ### what is **Manual** mode?
 - This mode gives you individual control over each service, and you can turn them on/off (via ctrl+c or closing the terminal window) to see the effects of individual services going up / down!
 - It also separates the logs in different windows, which can help with monitoring!
 
 ---
-### Only if accepting requests from non localhost clients:
+### If you need to change port numbers (for either mode):
+1. The [constants](https://github.com/pluckynumbat/dice-game-backend/blob/main/internal/shared/constants/constants.go) file (located at `project-root/internal/shared/constants.go`) contains port numbers set for the services, which you can change.
+2. If changed, the [constants file in the client repo](https://github.com/pluckynumbat/dice-game-client/blob/main/Assets/Scripts/Constants.cs) should also be changed in the same way.
+
+---
+### Only if accepting requests from non localhost clients (for either mode):
 1. Please make sure that the ports used by the services have not been blocked by the firewall
 2. Check out client side considerations [if connecting to a non localhost backend](https://github.com/pluckynumbat/dice-game-client?tab=readme-ov-file#only-if-connecting-to-a-non-localhost-backend) 
 
